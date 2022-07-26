@@ -1,0 +1,77 @@
+; simulate bit errors in these modules
+SIMERROR_RND defl 0
+SIMERROR_MARCH defl 0
+SILENCE defl 0
+
+;
+; iycall: make a "call" without using the stack.  Something like ARM branch and link.
+iycall macro subroutine
+    ld iy,$+7
+    jp subroutine
+endm
+
+iyret macro
+    jp (iy)
+endm
+
+
+haltcpu macro
+    jr $
+endm
+
+
+vtest macro char
+    ld a, char
+    iycall vramtest
+endm
+
+dtest macro char
+    ld a, char
+    call dramtest
+endm
+
+music macro tune
+    ld ix, tune
+    iycall playmusic
+endm
+
+
+
+
+runramtest macro membase, memsize, proc, arg
+        ld hl,membase
+        ld bc,memsize
+        ld a,arg
+        iycall proc
+endm
+
+ramtestblock macro membase, memsize
+    local reportrnd, reportmarch
+        ld hl,membase
+        ld bc,memsize
+        call announceblock
+
+        ld hl,rndtestname
+        call announcetest
+        push ix
+        runramtest membase, memsize, memtestrndwrite, 0
+        runramtest membase, memsize, memtestrndcompare, 0
+        jr c,reportrnd
+        runramtest membase, memsize, memtestrndwrite, 1
+        runramtest membase, memsize, memtestrndcompare, 1
+        jr c,reportrnd
+    reportrnd:
+        pop ix
+        call reportmem
+
+        ld hl,marchtestname
+        call announcetest
+        push ix
+        runramtest membase, memsize, memtestmarch, 0
+        jr c,reportmarch
+        runramtest membase, memsize, memtestmarch, 055h
+        jr c,reportmarch
+    reportmarch:
+        pop ix
+        call reportmem
+endm
