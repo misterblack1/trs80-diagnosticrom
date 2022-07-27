@@ -24,7 +24,8 @@ trs80diag.cim: trs80diag.mac
 $(BDSFILES): %.bds: %.cim
 
 %.cim: %.asm Makefile
-	zmac --zmac -m --od . --oo cim,bds,lst $<
+	zmac --zmac --od . --oo cim,bds,lst $<
+	# zmac --zmac -m --od . --oo cim,bds,lst $<
 
 # %.bin: %.asm Makefile
 # 	z80asm --list=$*.txt --output=$*.bin $<
@@ -38,7 +39,10 @@ emu1: emu
 
 %.emu: %.bds %.cim
 	osascript -e 'quit app "trs80gp"' ; sleep 1
-	open -a trs80gp --args -i "" -itime 9999999 $(SIMFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
+	# open -a trs80gp --args -rand $(SIMFLAGS) -l $(abspath $*.bds)
+	open -a trs80gp --args -rand $(SIMFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
+
+	# open -a trs80gp --args -i "" -itime 9999999 $(SIMFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
 
 # %.emu: %.bin
 # 	-killall trs80gp

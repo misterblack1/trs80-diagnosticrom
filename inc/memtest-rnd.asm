@@ -11,6 +11,7 @@
 ;       hl = address of ram detected bad if error
 ;       a = bitmap showing which bits were in error
 memtestrndwrite:
+        link_loadregs_all
     .fillram:
         cp 00h
         jp nz,.wfn	    ; on second pass, start with complemented data
@@ -67,10 +68,11 @@ memtestrndwrite:
         jp .wribn	    ; 
 
     .endwrite:		    ; now we compare what has been written
-        iyret
+;         iyret
 
 
-memtestrndcompare:
+; memtestrndcompare:
+        link_loadregs_all
         cp 00h
 if SIMERROR_RND
         ld (hl),0c5h

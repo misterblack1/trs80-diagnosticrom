@@ -1,3 +1,5 @@
+
+
 ;; test ram using march algorithm
 ;;  hl = current memory position under test (l is cleared... always start beginning of page)
 ;;  bc = bytes remaining to test (c is ignored... always test whole pages)
@@ -10,9 +12,7 @@
 ;;  read each location top to bottom, compare to complement, then write test value
 ;;  read each location top to bottom, compare to test value
 memtestmarch:
-        push de
-        push hl
-        push bc
+        link_loadregs_all
 
         ld d,a              ; save normal and negated versions of the test value
         cpl                 ; create the complement
@@ -24,10 +24,7 @@ memtestmarch:
         jp pe, .fillloop
     
     .up01:                  ; read value, write complement upwards
-        pop bc              ; fetch the count again
-        pop hl              ; fetch the start again
-        push hl
-        push bc
+        link_loadregs
     .up01loop:                  
         ld a,(hl)
         cp d                ; compare to value
@@ -37,10 +34,7 @@ memtestmarch:
         jp pe,.up01loop    ; repeat for all testing area
         
     .up10:                  ; read complement, write original value up
-        pop bc              ; fetch the count again
-        pop hl              ; fetch the start again
-        push hl
-        push bc
+        link_loadregs
     .up10loop:
         ld a,(hl)
         cp e                ; compare to the complement
@@ -50,10 +44,7 @@ memtestmarch:
         jp pe, .up10loop
     
     .dn01:                  ; read test value, write complement down
-        pop bc              ; fetch the count again
-        pop hl              ; fetch the start again
-        push hl
-        push bc
+        link_loadregs
         add hl,bc           ; move to end of the test area
         dec hl
     .dn01loop:
@@ -65,10 +56,7 @@ memtestmarch:
         jp pe, .dn01loop
 
     .dn10:                  ; read ones, write zeros down
-        pop bc              ; fetch the count again
-        pop hl              ; fetch the start again
-        push hl
-        push bc
+        link_loadregs
         add hl,bc           ; move to end of the test area
         dec hl
     .dn10loop:
@@ -80,14 +68,11 @@ memtestmarch:
         jp pe, .dn10loop
     
     .readzero:              ; final check that all are zero
-        pop bc              ; fetch the count again
-        pop hl              ; fetch the start again
-        push hl              ; adjust the stack to put the values back
-        push bc
+        link_loadregs
         add hl,bc           ; move to end of the test area
         dec hl
 if SIMERROR_MARCH
-        ld (hl),42h
+        ld (hl),42h         ; insert a synthetic error
 endif
     .readzeroloop:
         ld a,(hl)
@@ -97,9 +82,6 @@ endif
         jp pe,.readzeroloop
 
     .done:
-        pop bc
-        pop hl
-        pop de
         iyret
 
     .bad0:

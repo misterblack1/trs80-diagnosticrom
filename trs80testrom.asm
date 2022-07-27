@@ -54,16 +54,14 @@ diagnostics:
 	
         iycall chartest ; show all characters on the screen
 
-testvram:
-        runramtest VBASE, VSIZE, memtestrndwrite, 0
-        runramtest VBASE, VSIZE, memtestrndcompare, 0
+test_vram:
+        ; jr .vramok    ; for testing, we can skip the vram test (in case we are forcing a simluated error)
+        link_memtest memtestmarch, VBASE, VSIZE, 00h
         jr c,.vrambad
-        runramtest VBASE, VSIZE, memtestrndwrite, 1
-        runramtest VBASE, VSIZE, memtestrndcompare, 1
+        link_memtest memtestmarch, VBASE, VSIZE, 55h
         jr c,.vrambad
         jr .vramok
 
-        ; bad VRAM!
     .vrambad:
         music sadvram
         iycall chartest
@@ -82,15 +80,75 @@ testvram:
         ld hl,ramstartmsg
         call con_println
 
-ramtest:
+
+test_dram:
         ld a,2
         call con_row
-        ; ramtestblock 04000h,10h
-        ramtestblock 04000h,04000h
-        ramtestblock 08000h,04000h
-        ramtestblock 0C000h,04000h
-        ramtestblock 04000h,0c000h
-        jp ramtest
+
+        ; ld hl,membase
+        ; ld bc,memsize
+        ; call announceblock
+
+        ; ld hl,marchtestname
+        ; call announcetest
+
+        ; push ix
+
+
+        ; ; link_memtest memtestmarch, DBASE, 4h, 55h
+        ; link_memtest memtestmarch, $4000, $0400, $0
+        ; jr c,reportmarch
+        ; link_memtest memtestmarch, $4000, $0400, $55
+        ; jr c,reportmarch
+        ; link_memtest memtestmarch, $8000, $0400, $0
+        ; jr c,reportmarch
+        ; link_memtest memtestmarch, $8000, $0400, $55
+        ; jr c,reportmarch
+        ; link_memtest memtestmarch, $C000, $0400, $0
+        ; jr c,reportmarch
+        ; link_memtest memtestmarch, $C000, $0400, $55
+        ; jr c,reportmarch
+        ; link_memtest memtestmarch, $4000, $0C00, $0
+        ; jr c,reportmarch
+        ; link_memtest memtestmarch, $4000, $0C00, $55
+        ; jr c,reportmarch
+
+        ; ; ramtestblock 04000h,10h
+        ; ramtestblock 04000h,04000h
+        ; ramtestblock 08000h,04000h
+        ; ramtestblock 0C000h,04000h
+        ; ramtestblock 04000h,0c000h
+
+        link_memtest_block 04000h,04000h
+        link_memtest_block 08000h,04000h
+        link_memtest_block 0C000h,04000h
+        link_memtest_block 04000h,0c000h
+        jp test_dram
+
+
+
+;; -------------------------------------------------------------------------------------------------
+;; end of main program.
+
+; iy = pointer to return address
+;   address should be preceded by:
+;   iy = address to return to after running test
+;   (iy-2) = size of bank to test (dw)
+;   (iy-4) = address to start testing (dw)
+;   (iy-6) = test value to place in register a (db)
+; do_ramtestmarch:
+;         push bc
+;         push hl
+;         ld b,(iy-1)
+;         ld c,(iy-2)
+;         ld h,(iy-3)
+;         ld l,(iy-4)
+;         ld a,(iy-5)
+;         iycall memtestmarch
+;         pop hl
+;         pop bc
+
+vram_report:
 
 announceblock:
         call con_NL
@@ -123,7 +181,7 @@ reportmemgood:
         call con_print
 
         push ix
-        music bit1notes
+        music happymusic
         pop ix
         ret
 

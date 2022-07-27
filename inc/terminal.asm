@@ -53,9 +53,8 @@ con_println:
 ;; display a message (Requires good VRAM; using VRAM as stack.  Does not require RAM.)
 ;;      (HL) = message location
 ;;      (IX) = screen memory location
-;; TODO: try using CPIR
 con_print:
-        push hl
+        ; push hl
 
     .loop:
         ld a,(HL)       ; get message char
@@ -67,7 +66,7 @@ con_print:
         jr .loop        ; continue
 
     .done:
-        pop hl
+        ; pop hl
         ret
 
 ; print a single character

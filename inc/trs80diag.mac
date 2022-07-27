@@ -75,3 +75,75 @@ ramtestblock macro membase, memsize
         pop ix
         call reportmem
 endm
+
+
+link_memtest_block macro membase, memsize
+    local reportrnd, reportmarch
+        ld hl,membase
+        ld bc,memsize
+        call announceblock
+
+        ld hl,rndtestname
+        call announcetest
+        push ix
+        link_memtest memtestrndwrite, membase, memsize, 0
+        ; link_memtest memtestrndcompare, membase, memsize, 0
+        ; runramtest membase, memsize, memtestrndwrite, 0
+        ; runramtest membase, memsize, memtestrndcompare, 0
+        jr c,reportrnd
+        link_memtest memtestrndwrite, membase, memsize, 1
+        ; link_memtest memtestrndcompare, membase, memsize, 1
+        ; runramtest membase, memsize, memtestrndwrite, 1
+        ; runramtest membase, memsize, memtestrndcompare, 1
+        jr c,reportrnd
+    reportrnd:
+        pop ix
+        call reportmem
+
+        ld hl,marchtestname
+        call announcetest
+        push ix
+        link_memtest memtestmarch, membase, memsize, 0
+        jr c,reportmarch
+        link_memtest memtestmarch, membase, memsize, 55h
+        jr c,reportmarch
+    reportmarch:
+        pop ix
+        call reportmem
+endm
+
+
+link_memtest macro proc, base, size, value
+    local branch
+        ; push ix
+        ld iy,.`branch
+        jp proc
+
+        db value
+        dw base, size
+    .`branch:
+        ; pop ix
+endm
+
+link_memtest_stack macro proc, base, size, value
+        push ix
+        link_memtest proc, base, size, value
+        pop ix
+endm
+
+link_loadregs macro
+        ld b,(iy-1)
+        ld c,(iy-2)
+        ld h,(iy-3)
+        ld l,(iy-4)
+endm
+
+link_loadregs_all macro
+         link_loadregs
+        ld a,(iy-5)
+endm
+
+; args...
+; next address
+
+; ld hl,(iy+2)
