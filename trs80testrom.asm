@@ -1,10 +1,11 @@
 .include "inc/trs80diag.mac"
 
+
 ; SIMERROR_MARCH++
 ; SIMERROR_RND++
 ; SILENCE++
 
-CHARREPEAT: equ 64
+CHARREPEAT: equ 1
 
 VBASE  equ 3c00h
 VSIZE  equ 0400h
@@ -42,12 +43,10 @@ nmivec: retn
 
 ;; main program
 diagnostics:
-        ; in a, (0ech)	; control port
-        ; and 11111011b	; turn off bit 2
         ld a,0
-        out (0ech), a   ; set 64 char mode	
+        out ($EC), a   ; set 64 char mode	
 
-        ld a, 00h	    ; byte to be written goes in A
+        ld a, 0	    ; byte to be written goes in A
         out (0f8h),a	; blank printer port for now
 
         ld a,($3800)    ; poke the keyboard
@@ -56,6 +55,7 @@ diagnostics:
 
 test_vram:
         ; jr .vramok    ; for testing, we can skip the vram test (in case we are forcing a simluated error)
+	ld e,0
         link_memtest memtestmarch, VBASE, VSIZE, 00h
         jr c,.vrambad
         link_memtest memtestmarch, VBASE, VSIZE, 55h
@@ -85,40 +85,6 @@ test_dram:
         ld a,2
         call con_row
 
-        ; ld hl,membase
-        ; ld bc,memsize
-        ; call announceblock
-
-        ; ld hl,marchtestname
-        ; call announcetest
-
-        ; push ix
-
-
-        ; ; link_memtest memtestmarch, DBASE, 4h, 55h
-        ; link_memtest memtestmarch, $4000, $0400, $0
-        ; jr c,reportmarch
-        ; link_memtest memtestmarch, $4000, $0400, $55
-        ; jr c,reportmarch
-        ; link_memtest memtestmarch, $8000, $0400, $0
-        ; jr c,reportmarch
-        ; link_memtest memtestmarch, $8000, $0400, $55
-        ; jr c,reportmarch
-        ; link_memtest memtestmarch, $C000, $0400, $0
-        ; jr c,reportmarch
-        ; link_memtest memtestmarch, $C000, $0400, $55
-        ; jr c,reportmarch
-        ; link_memtest memtestmarch, $4000, $0C00, $0
-        ; jr c,reportmarch
-        ; link_memtest memtestmarch, $4000, $0C00, $55
-        ; jr c,reportmarch
-
-        ; ; ramtestblock 04000h,10h
-        ; ramtestblock 04000h,04000h
-        ; ramtestblock 08000h,04000h
-        ; ramtestblock 0C000h,04000h
-        ; ramtestblock 04000h,0c000h
-
         link_memtest_block 04000h,04000h
         link_memtest_block 08000h,04000h
         link_memtest_block 0C000h,04000h
@@ -130,32 +96,12 @@ test_dram:
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
 
-; iy = pointer to return address
-;   address should be preceded by:
-;   iy = address to return to after running test
-;   (iy-2) = size of bank to test (dw)
-;   (iy-4) = address to start testing (dw)
-;   (iy-6) = test value to place in register a (db)
-; do_ramtestmarch:
-;         push bc
-;         push hl
-;         ld b,(iy-1)
-;         ld c,(iy-2)
-;         ld h,(iy-3)
-;         ld l,(iy-4)
-;         ld a,(iy-5)
-;         iycall memtestmarch
-;         pop hl
-;         pop bc
 
 vram_report:
 
 announceblock:
         call con_NL
         call printrange
-        ; ld a,20h        ; print two spaces
-        ; call con_printc
-        ; call con_printc
         ret
     
 announcetest:
@@ -186,10 +132,11 @@ reportmemgood:
         ret
 
 reportmemerr:
+	ld a,e
         call con_printb
 
         push ix
-		music sadmusic
+	music sadmusic
         pop ix
         scf
         ret
@@ -229,6 +176,7 @@ chartest:
         inc a		; increments A
         cpi		    ; increments HL, decrements BC (and does a CP)
         jp pe, .charloop
+
         dec d
         jp nz, .loop
 
@@ -237,6 +185,9 @@ chartest:
 
 include "inc/memtest-rnd.asm"
 include "inc/memtest-march.asm"
+include "inc/terminal.asm"
+include "inc/music.asm"
+
 
 rndtestname:    db "  iz8dwf/rnd  ", 0
 marchtestname:  db "  ki3v/march  ", 0
@@ -248,7 +199,3 @@ rambadmsg:      defb "DRAM problem found. Do you have 48k? HALTED!", 0
 testingmsg:     defb "testing ", 0
 okmsg:          defb "OK!     ", 0
 haltmsg:        defb "Halted.", 0
-
-
-include "inc/terminal.asm"
-include "inc/music.asm"

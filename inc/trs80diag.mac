@@ -86,11 +86,12 @@ link_memtest_block macro membase, memsize
         ld hl,rndtestname
         call announcetest
         push ix
+	ld e,0
         link_memtest memtestrndwrite, membase, memsize, 0
         ; link_memtest memtestrndcompare, membase, memsize, 0
         ; runramtest membase, memsize, memtestrndwrite, 0
         ; runramtest membase, memsize, memtestrndcompare, 0
-        jr c,reportrnd
+        ; jr c,reportrnd
         link_memtest memtestrndwrite, membase, memsize, 1
         ; link_memtest memtestrndcompare, membase, memsize, 1
         ; runramtest membase, memsize, memtestrndwrite, 1
@@ -103,8 +104,9 @@ link_memtest_block macro membase, memsize
         ld hl,marchtestname
         call announcetest
         push ix
+	ld e,0
         link_memtest memtestmarch, membase, memsize, 0
-        jr c,reportmarch
+        ; jr c,reportmarch
         link_memtest memtestmarch, membase, memsize, 55h
         jr c,reportmarch
     reportmarch:
@@ -142,8 +144,3 @@ link_loadregs_all macro
          link_loadregs
         ld a,(iy-5)
 endm
-
-; args...
-; next address
-
-; ld hl,(iy+2)
