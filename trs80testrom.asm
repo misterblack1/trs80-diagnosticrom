@@ -5,8 +5,6 @@
 ; SIMERROR_RND++
 ; SILENCE++
 
-CHARREPEAT: equ 1
-
 VBASE  equ 3c00h
 VSIZE  equ 0400h
 VLINE  equ 64
@@ -166,8 +164,6 @@ printrange:     ; print HX "-" (HX)+BC-1 to indicate range of an operation
 
 ; Fill screen with hex 0h to ffh over and over again. Should see all possible characters. 
 chartest:
-        ld d,CHARREPEAT       ; repeat count for the video test
-    .loop: 
         ld hl,VBASE	; start of video ram
         ld bc,VSIZE	; video ram size - 1kB
 
@@ -177,16 +173,13 @@ chartest:
         cpi		    ; increments HL, decrements BC (and does a CP)
         jp pe, .charloop
 
-        dec d
-        jp nz, .loop
-
         iyret
 
 
 include "inc/memtest-rnd.asm"
 include "inc/memtest-march.asm"
-include "inc/terminal.asm"
-include "inc/music.asm"
+include "inc/trs80con.asm"
+include "inc/trs80music.asm"
 
 
 rndtestname:    db "  iz8dwf/rnd  ", 0

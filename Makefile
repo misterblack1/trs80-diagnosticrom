@@ -34,15 +34,16 @@ $(BDSFILES): %.bds: %.cim
 emu: $(TARGET:%=%.emu)
 bademu: SIMFLAGS = -mem 32 
 bademu: emu
-emu1: SIMFLAGS = -m1 -mem 16
+emu1: SIMFLAGS = -m1 -nlc -nld -mem 16
 emu1: emu
+emu1l: SIMFLAGS = -m1 -mem 16
+emu1l: emu
+emu3: SIMFLAGS = -m3
+emu3: emu
 
 %.emu: %.bds %.cim
 	osascript -e 'quit app "trs80gp"' ; sleep 1
-	# open -a trs80gp --args -rand $(SIMFLAGS) -l $(abspath $*.bds)
 	open -a trs80gp --args -rand $(SIMFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
-
-	# open -a trs80gp --args -i "" -itime 9999999 $(SIMFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
 
 # %.emu: %.bin
 # 	-killall trs80gp

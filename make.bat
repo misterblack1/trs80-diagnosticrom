@@ -1,0 +1,9 @@
+@echo off
+echo Building the trs80testrom.asm...
+echo Deleting build files...
+del *.cim
+del *.lst
+del *.bds
+echo Assembling...
+"C:\Program Files (x86)\zmac\zmac" --zmac --od . --oo cim,bds,lst trs80testrom.asm
+echo Done!
