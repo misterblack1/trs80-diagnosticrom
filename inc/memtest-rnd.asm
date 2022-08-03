@@ -5,7 +5,7 @@
 ; parameters:
 ; 	hl = start of ram to test
 ; 	bc = count of bytes to test
-; 	a = 0 for regular data, >0 for complemented data
+; 	a = 0 for regular test, >0 to start with complemented data (increase sequence length)
 ;	e = bits already found in error for this block
 ; returns:
 ;	e = bits in error updated
@@ -71,10 +71,6 @@ memtestrndwrite:
 		jp .wribn		; 
 
 	.endwrite:			; now we compare what has been written
-;         iyret
-
-
-; memtestrndcompare:
 		link_loadregs_all
 		cp 00h
 if SIMERROR_RND

@@ -6,141 +6,185 @@ SILENCE defl 0
 ;
 ; iycall: make a "call" without using the stack.  Something like ARM branch and link.
 iycall macro subroutine
-    ld iy,$+7
-    jp subroutine
+		ld iy,$+7
+		jp subroutine
 endm
 
 iyret macro
-    jp (iy)
+		jp (iy)
 endm
 
 
 haltcpu macro
-    jr $
+		jr $
 endm
 
-
-vtest macro char
-    ld a, char
-    iycall vramtest
-endm
-
-dtest macro char
-    ld a, char
-    call dramtest
-endm
 
 music macro tune
-    ld ix, tune
-    iycall playmusic
+		; ld ix, tune
+		ld hl,tune
+		iycall playmusic
 endm
 
+; pause macro destroys a,b,c regs!
+pause macro count
+	local loop
+		ld bc,count
+	.`loop:
+		dec bc
+		ld a,b
+		or c
+		jnz .`loop
 
-
-
-runramtest macro membase, memsize, proc, arg
-        ld hl,membase
-        ld bc,memsize
-        ld a,arg
-        iycall proc
 endm
 
-ramtestblock macro membase, memsize
-    local reportrnd, reportmarch
-        ld hl,membase
-        ld bc,memsize
-        call announceblock
-
-        ld hl,rndtestname
-        call announcetest
-        push ix
-        runramtest membase, memsize, memtestrndwrite, 0
-        runramtest membase, memsize, memtestrndcompare, 0
-        jr c,reportrnd
-        runramtest membase, memsize, memtestrndwrite, 1
-        runramtest membase, memsize, memtestrndcompare, 1
-        jr c,reportrnd
-    reportrnd:
-        pop ix
-        call reportmem
-
-        ld hl,marchtestname
-        call announcetest
-        push ix
-        runramtest membase, memsize, memtestmarch, 0
-        jr c,reportmarch
-        runramtest membase, memsize, memtestmarch, 055h
-        jr c,reportmarch
-    reportmarch:
-        pop ix
-        call reportmem
-endm
 
 
 link_memtest_block macro membase, memsize
-    local reportrnd, reportmarch
-        ld hl,membase
-        ld bc,memsize
-        call announceblock
+		ld hl,membase
+		ld bc,memsize
+		call announceblock
 
-        ld hl,rndtestname
-        call announcetest
-        push ix
-	ld e,0
-        link_memtest memtestrndwrite, membase, memsize, 0
-        ; link_memtest memtestrndcompare, membase, memsize, 0
-        ; runramtest membase, memsize, memtestrndwrite, 0
-        ; runramtest membase, memsize, memtestrndcompare, 0
-        ; jr c,reportrnd
-        link_memtest memtestrndwrite, membase, memsize, 1
-        ; link_memtest memtestrndcompare, membase, memsize, 1
-        ; runramtest membase, memsize, memtestrndwrite, 1
-        ; runramtest membase, memsize, memtestrndcompare, 1
-        jr c,reportrnd
-    reportrnd:
-        pop ix
-        call reportmem
+		ld hl,rndtestname
+		call announcetest
+		push ix
+		ld e,0
+		link_memtest memtestrndwrite, membase, memsize, 0
+		link_memtest memtestrndwrite, membase, memsize, 1
+		pop ix
+		call reportmem
 
-        ld hl,marchtestname
-        call announcetest
-        push ix
-	ld e,0
-        link_memtest memtestmarch, membase, memsize, 0
-        ; jr c,reportmarch
-        link_memtest memtestmarch, membase, memsize, 55h
-        jr c,reportmarch
-    reportmarch:
-        pop ix
-        call reportmem
+		ld hl,marchtestname
+		call announcetest
+		push ix
+		ld e,0
+		link_memtest memtestmarch, membase, memsize, 0
+		pop ix
+		call reportmem
 endm
 
 
 link_memtest macro proc, base, size, value
-    local branch
-        ; push ix
-        ld iy,.`branch
-        jp proc
+	local branch
+		; push ix
+		ld iy,.`branch
+		jp proc
 
-        db value
-        dw base, size
-    .`branch:
-        ; pop ix
+		db value
+		dw base, size
+	.`branch:
+		; pop ix
 endm
 
 link_memtest_stack macro proc, base, size, value
-        push ix
-        link_memtest proc, base, size, value
-        pop ix
+		push ix
+		link_memtest proc, base, size, value
+		pop ix
 endm
 
 link_loadregs macro
-        ld b,(iy-1)
-        ld c,(iy-2)
-        ld h,(iy-3)
-        ld l,(iy-4)
+		ld b,(iy-1)
+		ld c,(iy-2)
+		ld h,(iy-3)
+		ld l,(iy-4)
 endm
 
 link_loadregs_all macro
-         link_loadregs
-        ld a,(iy-5)
+		link_loadregs
+		ld a,(iy-5)
+endm
+
+
+; console macros
+; global reg:
+;	ix = pointer to current location in screen memory
+; destroy:
+;	a = working reg
+;	hl = working pointer (and incoming parameter)
+;	bc = counter
+; preserve:
+;	de
+;	iy
+
+mac_con_home macro
+		ld ix,VBASE
+endm
+
+mac_con_clear macro
+		ld ix,VBASE
+		ld bc,VSIZE-2
+	.loop:
+		ld (ix+0),20h
+		inc ix
+		cpi
+		jp pe,.loop
+
+		ld ix,VBASE
+endm
+
+mac_con_printc macro
+		ld (ix+0), a
+		inc ix
+endm
+
+mac_itoh_nybble macro
+		or $F0
+		daa
+		add a, $A0
+		adc a, $40
+endm
+
+mac_con_printx macro
+		ld b,a			; save a copy of the number to convert
+		rra			; get upper nybble
+		rra
+		rra
+		rra
+		mac_itoh_nybble		; convert to ascii
+		mac_con_printc
+		ld a,b			; fetch lower nybble
+		mac_itoh_nybble		; convert to ascii
+		mac_con_printc		
+endm
+
+mac_con_CR macro
+		ld a,ixl
+		and $c0
+		ld ixl,a
+endm
+
+mac_con_col macro
+		ld b,0
+		ld c,a
+		mac_con_CR
+		add ix,bc
+endm
+
+mac_con_NL macro
+	local skip
+		; ld b,0
+		; ld c,$40
+		; mac_con_CR
+		; add ix,bc
+		ld a,ixl		; go to beginning of line
+		and $c0			; then go to the next line
+		add a,$40
+		ld ixl,a		; store the low byte back
+		jr nc,.`skip
+		inc ixh			; fix up high byte if there was a carry
+	.`skip:
+endm
+
+mac_con_row macro row
+		ld ix,VBASE+(row*VLINE)     ; add this offset to the base
+endm
+
+mac_con_println macro message
+		ld hl,message
+		call con_println
+endm
+
+mac_con_print macro message
+		ld hl,message
+		call con_print
 endm

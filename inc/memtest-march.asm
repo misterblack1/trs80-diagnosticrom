@@ -10,18 +10,21 @@
 ;;  6: read each location top to bottom, compare to test value
 
 ; test ram using march algorithm. Arguments:
-;   hl = current memory position under test (l is cleared... always start beginning of page)
-;   bc = bytes remaining to test (c is ignored... always test whole pages)
-;   a = value to test (useful cases: 0, 55h)
+;	hl = current memory position under test (l is cleared... always start beginning of page)
+;	bc = bytes remaining to test (c is ignored... always test whole pages)
+; returns:
+;	e = all errored bits found in this block/bank/range of memory
+; destroys: a,bc,d,hl
+; preserves: ix
 
 memtestmarch:
-		link_loadregs_all
-		ld d,a				; save the testing value
-
-	mtm1:					; fill initial value upwards
+		ld d,0				; set the first testing value to 0
+	mtm1:
+		link_loadregs
+	mtm1loop:				; fill initial value upwards
 		ld (hl),d
 		cpi
-		jp pe, mtm1
+		jp pe, mtm1loop
 	mtm2:					; read value, write complement upwards
 		link_loadregs
 	mtm2loop:                  
@@ -31,7 +34,7 @@ memtestmarch:
 		xor d				; calculate errored bits
 		or e				
 		ld e,a				; save error bits to e
-		ld a,d
+		ld a,d				; reload a with correct value
 	mtm2cont:
 		cpl				; take the complement
 		ld (hl),a			; write the complement
@@ -109,6 +112,12 @@ endif
 	mtm6cont:
 		cpd
 		jp pe,mtm6loop
+
+	mtmredo:
+		ld a,d	
+		cp 0				; if our test value is 0
+		ld d,$55
+		jp z,mtm1				; then rerun the tests with value $55
 
 	mtm_done:
 		sub a				; set carry flag if e is nonzero
