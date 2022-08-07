@@ -3,6 +3,10 @@ SIMERROR_RND defl 0
 SIMERROR_MARCH defl 0
 SILENCE defl 0
 
+dbz macro string
+	db "`string`", 0
+endm
+
 ;
 ; iycall: make a "call" without using the stack.  Something like ARM branch and link.
 iycall macro subroutine
@@ -26,6 +30,8 @@ music macro tune
 		iycall playmusic
 endm
 
+
+
 ; pause macro destroys a,b,c regs!
 pause macro count
 	local loop
@@ -40,47 +46,39 @@ endm
 
 
 
-link_memtest_block macro membase, memsize
+
+
+
+link_memtest_block_announce macro membase, memsize, memname
+		mac_con_NL
+		mac_con_print memname
 		ld hl,membase
 		ld bc,memsize
-		call announceblock
-
-		ld hl,rndtestname
 		call announcetest
-		push ix
-		ld e,0
-		link_memtest memtestrndwrite, membase, memsize, 0
-		link_memtest memtestrndwrite, membase, memsize, 1
-		pop ix
-		call reportmem
+endm
 
-		ld hl,marchtestname
-		call announcetest
-		push ix
+link_memtest_block macro membase, memsize, memname
+		link_memtest_block_announce membase, memsize, memname
 		ld e,0
-		link_memtest memtestmarch, membase, memsize, 0
-		pop ix
-		call reportmem
+		link_memtest memtestmarch, membase, memsize
 endm
 
 
-link_memtest macro proc, base, size, value
+link_memtest macro proc, base, size
 	local branch
-		; push ix
 		ld iy,.`branch
 		jp proc
 
-		db value
+		; db value
 		dw base, size
 	.`branch:
-		; pop ix
 endm
 
-link_memtest_stack macro proc, base, size, value
-		push ix
-		link_memtest proc, base, size, value
-		pop ix
-endm
+; link_memtest_stack macro proc, base, size, value
+; 		push ix
+; 		link_memtest proc, base, size, value
+; 		pop ix
+; endm
 
 link_loadregs macro
 		ld b,(iy-1)
@@ -89,10 +87,98 @@ link_loadregs macro
 		ld l,(iy-4)
 endm
 
-link_loadregs_all macro
-		link_loadregs
-		ld a,(iy-5)
+; link_loadregs_all macro
+; 		link_loadregs
+; 		ld a,(iy-5)
+; endm
+
+mac_soundbiterr macro bitnum
+	local zero,cont
+		pause $4000
+
+		bit bitnum,e
+		jp z,.`zero
+
+		music bitbadnotes
+		jp .`cont
+	.`zero:
+		music bitgoodnotes
+	.`cont:
 endm
+
+play_bit_errors macro
+	local allbad, pbe_done
+		ld a,$FF
+		cp e
+		jp z,.`allbad
+
+		irpc bn,76543210
+			mac_soundbiterr bn
+		endm
+		jr .`pbe_done
+	.`allbad:
+		music bytebadnotes
+	.`pbe_done:
+endm
+
+mac_soundbiterrs macro
+	local showbit, zero, msbe_cont
+		ld b,8
+	.`showbit:
+		bit 7,e
+		jr z,.`zero
+		ld hl,bitbadnotes
+		jr .`msbe_cont
+	.`zero:
+		ld hl,bitgoodnotes
+	.`msbe_cont:
+		iycall playmusic
+		dec a
+		rlc e
+		djnz .`showbit
+endm
+
+
+mac_reportmem macro
+	local bad, ok, cont
+		jp nc,.`ok
+
+		mac_con_print_iy biterrmsg
+		iycall printbiterr_iy
+		mac_con_clear_eol
+		play_bit_errors
+		jp .`cont
+	.`ok:
+		mac_con_print_iy okmsg
+		mac_con_clear_eol
+		music bytegoodnotes
+	.`cont:
+endm
+
+mac_reportmem_stackbank_bad macro
+		mac_con_print_iy biterrmsg
+		iycall printbiterr_iy
+		mac_con_print_iy haltmsg
+		mac_con_clear_eol
+		play_bit_errors
+		haltcpu
+endm
+
+mac_reportmem_stackbank_ok macro
+		mac_con_print_iy okmsg
+		mac_con_print_iy msgstack
+		mac_con_clear_eol
+		music bytegoodnotes
+endm
+
+mac_reportmem_stackbank macro
+	local bad, mrs_ok
+		jp nc,.`mrs_ok
+		mac_reportmem_stackbank_bad
+	.`mrs_ok:
+		mac_reportmem_stackbank_ok
+endm
+
 
 
 ; console macros
@@ -111,13 +197,14 @@ mac_con_home macro
 endm
 
 mac_con_clear macro
+	local loop
 		ld ix,VBASE
-		ld bc,VSIZE-2
-	.loop:
+		ld bc,VSIZE
+	.`loop:
 		ld (ix+0),20h
 		inc ix
 		cpi
-		jp pe,.loop
+		jp pe,.`loop
 
 		ld ix,VBASE
 endm
@@ -129,9 +216,9 @@ endm
 
 mac_itoh_nybble macro
 		or $F0
-		daa
+		daa			; is lower nybble >9? (as if doing BCD math)
 		add a, $A0
-		adc a, $40
+		adc a, $40		; >9, so move up to 'A'
 endm
 
 mac_con_printx macro
@@ -160,6 +247,11 @@ mac_con_col macro
 		add ix,bc
 endm
 
+mac_con_index macro moveby
+		ld bc,moveby
+		add ix,bc
+endm
+
 mac_con_NL macro
 	local skip
 		; ld b,0
@@ -184,7 +276,47 @@ mac_con_println macro message
 		call con_println
 endm
 
+mac_con_print_nostack macro message
+	local loop,done
+		ld hl,message
+	.`loop:
+		ld a,(HL)       ; get message char
+		or a            ; test for null
+		jr z, .`done     ; return if done
+		ld (ix+0),A     ; store char
+		inc ix          ; advance screen pointer
+		inc hl          ; advance message pointer
+		jr .`loop        ; continue
+	.`done:
+endm
+
+
 mac_con_print macro message
 		ld hl,message
 		call con_print
+endm
+
+mac_con_print_iy macro message
+		ld hl,message
+		iycall con_print_iy
+endm
+
+mac_con_clear_eol macro
+	local loop
+		ld a,ixh
+		ld h,a
+		ld a,ixl
+		ld l,a
+		
+	.`loop:
+		ld a,' '
+		mac_con_printc
+		ld a,ixl
+		and $3F			; see if we are at the beginning of the line
+		jr z,.`loop
+
+		ld a,h
+		ld ixh,a
+		ld a,l
+		ld ixl,a
 endm

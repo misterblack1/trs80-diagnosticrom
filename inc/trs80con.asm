@@ -26,20 +26,31 @@ con_println:
 		call con_NL
 		ret
 
+
 ;; display a message (Requires good VRAM; using VRAM as stack.  Does not require RAM.)
 ;;      (HL) = message location
 ;;      (IX) = screen memory location
-con_print:
-	.loop:
+_print macro 
+	local loop, done
+	.`loop:
 		ld a,(HL)       ; get message char
 		or a            ; test for null
-		jr z, .done     ; return if done
+		jr z, .`done     ; return if done
 		ld (ix+0),A     ; store char
 		inc ix          ; advance screen pointer
 		inc hl          ; advance message pointer
-		jr .loop        ; continue
+		jr .`loop        ; continue
 
-	.done:
+	.`done:
+endm
+
+con_print_iy:
+	_print
+		iyret
+
+
+con_print:
+		_print
 		ret
 
 ; print a single character

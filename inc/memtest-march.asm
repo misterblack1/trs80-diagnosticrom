@@ -34,6 +34,8 @@ memtestmarch:
 		xor d				; calculate errored bits
 		or e				
 		ld e,a				; save error bits to e
+		cp $ff				; if we have already found all bits bad
+		jp z,mtm_done			; then quit
 		ld a,d				; reload a with correct value
 	mtm2cont:
 		cpl				; take the complement
@@ -51,6 +53,8 @@ memtestmarch:
 		xor d				; calculate errored bits
 		or e				
 		ld e,a				; save error bits to e
+		cp $ff				; if we have already found all bits bad
+		jr z,mtm_done			; then quit
 		ld a,d
 	mtm3cont:
 		ld (hl),d			; fill with test value
@@ -68,6 +72,8 @@ memtestmarch:
 		xor d				; calculate errored bits
 		or e				
 		ld e,a				; save error bits to e
+		cp $ff				; if we have already found all bits bad
+		jr z,mtm_done			; then quit
 		ld a,d
 	mtm4cont:
 		cpl				; take the complement
@@ -87,6 +93,8 @@ memtestmarch:
 		xor d				; calculate errored bits
 		or e				
 		ld e,a				; save error bits to e
+		cp $ff				; if we have already found all bits bad
+		jr z,mtm_done			; then quit
 		ld a,d
 	mtm5cont:
 		ld (hl),d
@@ -108,6 +116,8 @@ endif
 		xor d				; calculate errored bits
 		or e				
 		ld e,a				; save error bits to e
+		cp $ff				; if we have already found all bits bad
+		jr z,mtm_done			; then quit
 		ld a,d
 	mtm6cont:
 		cpd
