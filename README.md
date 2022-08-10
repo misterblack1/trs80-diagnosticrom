@@ -2,25 +2,30 @@
 
 ![Normal Operation](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Normal%20Operation%2016K%20Model%203.jpg?raw=true)
 
-## Introduction
+## Introduction from Adrian
 
-This projet was born out of a broken TRS-80 Model 3 that I was working on. I could not tell if the system was even executing code, so used an early version of this ROM to help diagnose the prolbme. 
+This projet was born out of a broken TRS-80 Model 3 that I was working on. I could not tell if the system was even "executing code," so I used an early version of this ROM to help diagnose the problem.
+
+Please know that the main goal of this ROM is to test the functionality of the video RAM (VRAM) and the dynamic RAM (DRAM, system memory.) It does not test any other component unrelated to those two subsystems. If a TRS-80 has good VRAM and DRAM, it should boot into basic where you can then run further tests. 
+
+You should familiarize yourself with the system schematics and design of the TRS-80 before using this ROM since problems in other areas of the system can sometimes manifest themselves of a RAM problem. 
 
 << Insert video links here when live >>
 
-In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudamentary RAM test that is inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is far supirior to normal simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which is widely viewed as one of the best tests there is.
-
-In addition, we have implemented some extra nice features in this rom:
+In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudamentary RAM test that is inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the normal simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which is widely viewed as one of the best tests there is.
 
 ## Feature List
 
-- One ROM for both Model 1 and 3
+- One ROM image for both Model 1 and 3 and all DRAM sizes
 - Audio feedback via the cassette port, so you can tell what's happening even if you have no video display
-- Testing the VRAM using a march test, then Using the VRAM as the stack so the ROM can fully work without any DRAM installed in the system
+- Testing the VRAM using a march test, then Using the VRAM as the stack so the ROM can fully work without any DRAM installed in the system *1
 - Auto detection of VRAM type (The Model 1 comes with 7-bit VRAM as stock, so it cannot be used as a stack)
-- Auto detection of bank size (4k or 16k)
-- Testing up to 48k of DRAM, running continually 
+- Auto detection of bank size (4k or 16k) *2
+- Testing up to 48k of DRAM, looping continually 
 - Fits withtin 2K so the ROM can be used on a Level 1 machine
+
+*1: The stack can only be used if all 8-bits of VRAM are available and working. If there is a VRAM fault, the system will make a tonoe and halt. If there is only 7-bit of VRAM (stock Model 1) the RAM test will test and use the first vank of DRAM for the stack. 
+*2: When testing, if the ROM detects 4K, it will only test 4k and stop. This is the mazimum allowed RAM in a 4K configuration. When 16k is detected, it will attempt to test all 3 banks oF DRAM, even if only 1 is installed. 
 
 ## Future improvements
 
@@ -31,7 +36,8 @@ In addition, we have implemented some extra nice features in this rom:
 
 To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an adapter to allow use of an EPROM in the U104 ROM socket. This socket is designed for a 2364 which does not have a compatible pinout with a 2764 EPROM. Adapter PCBs are widely available on the usual sources, or you can make some PCBs at this link:
 
-<<pcb way link>>
+[PCBway Project Link for EPROM adapter](https://www.pcbway.com/project/shareproject/Adapter_2364___27128__by_Bobbel_.html
+)
   
 One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up. (Address $0000)
   
