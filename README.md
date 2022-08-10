@@ -2,6 +2,11 @@
 
 ![Normal Operation](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Normal%20Operation%2016K%20Model%203.jpg?raw=true)
 
+#### Main contributors:
+- David KI3V - Programmer and designer
+- Frank IZ8DWF - Testing methodology and initial test routines
+- Adrian Black - Testing, initial concept and QA
+
 ## Introduction from Adrian
 
 This projet was born out of a broken TRS-80 Model 3 that I was working on. I could not tell if the system was even "executing code," so I used an early version of this ROM to help diagnose the problem.
