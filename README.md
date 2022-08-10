@@ -22,7 +22,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 - Auto detection of VRAM type (The Model 1 comes with 7-bit VRAM as stock, so it cannot be used as a stack)
 - Auto detection of bank size (4k or 16k) *2
 - Testing up to 48k of DRAM, looping continually 
-- Fits withtin 2K so the ROM can be used on a Level 1 machine
+- Fits within 2K so the ROM can be used on a Level 1 machine
 
 *1: The stack can only be used if all 8-bits of VRAM are available and working. If there is a VRAM fault, the system will make a tonoe and halt. If there is only 7-bit of VRAM (stock Model 1) the RAM test will test and use the first vank of DRAM for the stack. 
 
