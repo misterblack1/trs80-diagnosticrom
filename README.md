@@ -40,6 +40,20 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 - Porting the diagnostic routines to other Z80 systems
 - More comprehensive documentation
 
+# What the ROM does
+
+- Makes a beep from the cassette port (so you can know the system is executing the ROM.)
+- Set the system to 64 column mode.
+- Tests the video RAM for proper functioanlity using a stackless march test. (No DRAM is needed!)
+- If the VRAM only has 7 working bits (bit 6 is missing on stock Model 1) then test assumes the system is a Model 1.
+- Beep a good or bad VRAM sound. If the VRAM is bad, it will beep out which bit(s) are bad, print a test pattern and halt.
+- Sets the stack pointer to VRAM if the system has a good 8-bits of VRAM, clears screen and writes a welcome message.
+- If system is 7-bit Model 1, the system will do a stackless test of bank 1. If that passes, it will set the stack pointer to this first bank, clear the screen and print a welcome message.
+- If system is 8-bit Model 1 or a Model 3, ROM will test bank 1 of DRAM. If this bank only has 4K, tests that first bank of 4k repeatedly.
+- If bank 1 is 16k, it will test that bank and bank 2 and 3 repeatedly. (For a total of 48k)
+- Diagnostic will make a good bank or bad bank sound. If a bad bank exists, it will beep out which bits are bad and print this to screen.
+- The RAM test will run continually.
+
 # Running this diagnostic ROM on a TRS-80 Model 1 or Model 3
 
 To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an adapter to allow use of an EPROM in the U104 ROM socket. This socket is designed for a 2364 which does not have a compatible pinout with a 2764 EPROM. Adapter PCBs are widely available on the usual sources, or you can make some PCBs at this link:
