@@ -49,7 +49,7 @@ To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an ad
   
 One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up. (Address $0000)
   
-On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip is a 2332, so a 2732 should work in place of it. (Unconfirmed. I used my 2364 to 2764 adapter in this socket and it mostly worked, except I had to write the ROM into the second top half of the 28b64. Load the ROM image into address $1000 in your EPROM software, then write to the chip.)
+On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. (Unconfirmed and untested.) I used my 2364 to 2764 adapter in this socket and it mostly worked, except I had to write the ROM into the second top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address $1000 in your EPROM software before writing, so it is mapped to $0000 on the Model 1.)
   
 - The VRAM test detects if the machine is a 7-bit VRAM Model 1 by testing the VRAM. If bit 6 (data line 6) comes back as bad, it assumes it's a model 1.
 - If you have a Model 3 or a 8-bit VRAM Model 1 (this is also known as the lower-case mode, where one extra VRAM chip is added in) the Diagnostic screen will say it's using the VRAM for the processor stack. If you areon a Model 3 or 8-bit VRAM Model 1 and the ROM says it is using DRAM for the stack, **then bit 6 of the VRAM has a problem and you must fix that. **
