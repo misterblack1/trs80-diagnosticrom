@@ -35,24 +35,7 @@ reset:
 		di		; mask INT
 		im 1
 		music welcomemusic
-		jp diagnostics
 
-; interrupt vectors: these need to be located at 38h and 66h, so there is little
-; code space before them.  They should probably be present so that any incoming interrupts
-; won't kill the test routines.  The INT vector is probably unnecessary but the NMI should
-; be present. Put the main program after them; we've got 8k to work with for the main ROM.
-
-		dc 0038h-$,0ffh	; fill empty space
-		org 0038h	; INT vector
-intvec: reti
-
-		dc 0066h-$,0ffh	; fill empty space
-		org 0066h	; NMI vector
-nmivec: retn
-
-
-
-;; main program
 diagnostics:
 		ld a,0
 		out ($EC), a	; set 64 char mode	
@@ -60,38 +43,69 @@ diagnostics:
 		ld a,0		; byte to be written goes in A
 		out (0f8h),a	; blank printer port for now
 
-		iycall chartest	; show all characters on the screen
-
 test_vram:
 		ld e,0
 		link_memtest memtestmarch, VBASE, VSIZE
-		; ld e,10000000b	; simlulate a vram error
-		; scf
 vram_result:
-		jp nc,vram_8bit
+		jr nc,vram_8bit
 
 		; Check if it is just bit 6 failing and assume it is a 7-bit VRAM model 1.
 		ld a,10111111b	; ignore bit 6
 		and e
 		jp nz,vrambad	; VRAM is really bad, not just bit 6.  Report via tones.
-		jp vram_7bit	; VRAM is no good for stack, but OK for printing
-	
+		; jp vram_7bit	; VRAM is no good for stack, but OK for printing
+
+vram_7bit:						; we know we have 7-bit VRAM and that it tests OK
+		mac_con_clear				; clear and print banner (this does not require stack)
+		mac_con_print_iy bannermsg
+		
+		mac_con_row 4
+		mac_con_print_iy msgstacktest
+
+		ld e,0
+		link_memtest memtestmarch, $7000, $1000	; test the region between 12k and 16k (can never have DRAM in 4k bank machine)
+		jp nc,dram_stack_16k_banks		; if this region tests OK, assume 16k banks and start testing
+
+		ld a,$FF
+		cp e
+		jp z,dram_stack_4k_banks		; if all bits are in error between 12k and 16k, assume 4k machine
+		jp dram_stack_16k_banks
+
+
+; interrupt vectors: these need to be located at 38h and 66h, so there is little
+; code space before them.  They should probably be present so that any incoming interrupts
+; won't kill the test routines.  The INT vector is probably unnecessary but the NMI should
+; be present. Put the main program after them; we've got 8k to work with for the main ROM.
+
+; 		dc 0038h-$,0ffh	; fill empty space
+; 		org 0038h	; INT vector
+; intvec: reti
+
+		.assert $ <= $66
+		dc 0066h-$,0ffh	; fill empty space
+		org 0066h	; NMI vector
+nmivec: retn
+
+vram_7bit_cont:
+
+
 vram_8bit:						; VRAM tests good all 8 bits
 		ld sp, VSTACK				; use VRAM as the stack
 
 		mac_con_clear
 		mac_con_println bannermsg
-		link_memtest_block_announce VBASE,VSIZE,vramname
+		mac_memtest_announce label_vram
 		mac_con_print ramstackmsg
+		music happymusic
 
 		mac_con_row 15
 		mac_con_print vramstackmsg
 
 		; print the character set in the bottom part of the screen
-		mac_con_row 9
-		mac_con_index 24
+		mac_con_pos 9,24
 		mac_con_println charsetmsg
-		iycall charset
+		
+		iycall charset_here
 
 
 		; determine which kind of DRAM we have
@@ -100,7 +114,7 @@ vram_8bit:						; VRAM tests good all 8 bits
 
 		ld a,$FF
 		cp e
-		jp z,vram_stack_4k_banks		; if all bits are in error between 12k and 16k, assume 4k machine
+		jr z,vram_stack_4k_banks		; if all bits are in error between 12k and 16k, assume 4k machine
 
 		; otherwise, only some of the bits between 12k and 16k were bad.  The first bank is bad but VRAM is good, 
 		; so fall through and do the 16k bank tests with display
@@ -108,78 +122,61 @@ vram_8bit:						; VRAM tests good all 8 bits
 vram_stack_16k_banks:
 	.loop:
 		mac_con_row 3
-		link_memtest_block $4000, $4000, dram16name
+		link_memtest_block $4000, $4000, label_dram16k1
 		call reportmem
-		link_memtest_block $8000, $4000, dram16name
+		link_memtest_block $8000, $4000, label_dram16k2
 		call reportmem
-		link_memtest_block $C000, $4000, dram16name
+		link_memtest_block $C000, $4000, label_dram16k3
 		call reportmem
-		jp .loop
+		jr .loop
 
 
 vram_stack_4k_banks:
 	.loop:
 		mac_con_row 3
-		link_memtest_block $4000, $1000, dram4name
+		link_memtest_block $4000, $1000, label_dram4k
 		call reportmem
 		; a 4k bank machine can only have one bank
-		jp .loop
+		jr .loop
 
-
-
-vram_7bit:						; we know we have 7-bit VRAM and that it tests OK
-		mac_con_clear				; clear and print banner (this does not require stack)
-		mac_con_print_nostack bannermsg
-		
-		ld e,0
-		link_memtest memtestmarch, $7000, $1000	; test the region between 12k and 16k (can never have DRAM in 4k bank machine)
-		jr nc,dram_stack_16k_banks		; if this region tests OK, assume 16k banks and start testing
-
-		ld a,$FF
-		cp e
-		jp z,dram_stack_4k_banks		; if all bits are in error between 12k and 16k, assume 4k machine
-
-		; otherwise, only some of the bits between 12k and 16k were bad.  The first bank is bad but and VRAM is 7-bit, 
-		; so fall through and do the 16k bank tests.  The first one will fail and should tone out the error.
 
 
 dram_stack_16k_banks:					; The first 16K DRAM tests good.  Assuming 16k DRAM banks.
 		ld sp,$4000+$1000
 
-		mac_con_row 4
-		mac_con_println msgstacktest
+		; mac_con_row 4
+		; mac_con_println msgstacktest
 
 		; tricky: we can't assume the stack is good yet.  So we need to perform the first test without
 		; calling anything that requires the stack.  The announcement messages require the stack, so 
 		; run the test first, then announce if it succeeds, and tone out if it fails
 		ld e,0
 		link_memtest memtestmarch, $4000, $4000
-		jp nc,.dramstackgood
+		jr nc,.dramstackgood
 
-		mac_reportmem_stackbank_bad		; we did not pass the first stack bank test
-		haltcpu
+		mac_reportmem_stackbank_bad		; we did not pass the first stack bank test (never returns)
 
 	.dramstackgood:					; stack has tested good, so we can print using stack
 		mac_con_row 1				; announce results of VRAM test
-		link_memtest_block_announce VBASE,VSIZE,vramname
+		mac_memtest_announce label_vram
 		mac_con_print ok7msg
+		music happymusic
 
-		mac_con_row 9				; print the character set at the bottom of the screen
-		mac_con_index 24
+		mac_con_pos 9,24			; print the character set at the bottom of the screen
 		mac_con_println charsetmsg
-		iycall charset
+		iycall charset_here
 
 		mac_con_row 3				; announce results of first DRAM test
-		link_memtest_block_announce $4000,$4000,dram16name
+		mac_memtest_announce label_dram16k1
 		mac_reportmem_stackbank_ok
 
 	.loop:
-		link_memtest_block $8000, $4000, dram16name
+		link_memtest_block $8000, $4000, label_dram16k2
 		call reportmem
-		link_memtest_block $C000, $4000, dram16name
+		link_memtest_block $C000, $4000, label_dram16k3
 		call reportmem
 		mac_con_row 3				; test the stack bank.  It has passed once so we can print using stack.
-		link_memtest_block $4000, $4000, dram16name
+		link_memtest_block $4000, $4000, label_dram16k1
 		mac_reportmem_stackbank
 		jp .loop
 
@@ -190,30 +187,28 @@ dram_stack_4k_banks:					; The first 4K DRAM tests good.  Assuming it's a 4k ban
 		; run the test first, then announce if it succeeds, and tone out if it fails
 		ld e,0
 		link_memtest memtestmarch, $4000, $1000
-		jp nc,.dramstackgood
+		jr nc,.dramstackgood
 
-		mac_reportmem_stackbank_bad		; we did not pass the first stack bank test
-		haltcpu
+		mac_reportmem_stackbank_bad		; we did not pass the first stack bank test (never returns)
 
 	.dramstackgood:					; stack has tested good, so we can print using stack
 		mac_con_row 1				; announce results of VRAM test
-		link_memtest_block_announce VBASE,VSIZE,vramname
+		mac_memtest_announce label_vram
 		mac_con_print ok7msg
 
-		mac_con_row 9				; print the character set at the bottom of the screen
-		mac_con_index 24
+		mac_con_pos 9,24			; print the character set at the bottom of the screen
 		mac_con_println charsetmsg
-		iycall charset
+		iycall charset_here
 
 		mac_con_row 3				; announce results of first DRAM test
-		link_memtest_block_announce $4000,$1000,dram16name
+		mac_memtest_announce label_dram4k
 		mac_reportmem_stackbank_ok
 
 	.loop:
 		mac_con_row 3				; test the stack bank.  It has passed once so we can print using stack.
-		link_memtest_block $4000, $1000, dram16name
+		link_memtest_block $4000, $1000, label_dram4k
 		mac_reportmem_stackbank
-		jp .loop
+		jr .loop
 
 
 
@@ -226,84 +221,46 @@ dram_stack_4k_banks:					; The first 4K DRAM tests good.  Assuming it's a 4k ban
 vrambad:
 		iycall chartest
 	.toneout:
-		music sadvram
+		ld hl,sadvram
+		jr membadtones
+
+drambad:	ld hl,sadmusic
+membadtones:	iycall playmusic
 		pause $4000
 		play_bit_errors
 		pause $FFFF
-		jp .toneout
+		jr membadtones
 
 
-drambad:	music sadmusic
-		pause $4000
-		play_bit_errors
-		haltcpu
+stackbank_bad:
+		mac_con_print_iy biterrmsg
+		iycall printbiterr_iy
+		mac_con_print_iy haltmsg
+		jp drambad
 
-; announceblock:
-; 		mac_con_NL
-; 		call printrange
-; 		ret
-	
+
+
 announcetest:
-		call printrange
-		ld a,' '
-		mac_con_printc
-		push ix
+		iycall con_NL_iy
+		iycall con_print_iy
 		mac_con_print testingmsg
-		pop ix
+		mac_con_index -9
 		ret
-
-
-
 
 reportmem:
 		mac_reportmem
 		ret
-; 		call c,reportmemerr
-; 		call nc,reportmemgood
-; 		ret
 
 
-; reportmemgood:
-; 		mac_con_print okmsg
-; 		music bytegoodnotes
-; 		ret
-
-; reportmemerr:
-; 		iycall printbiterr_iy
-; 		play_bit_errors
-; 		scf
-; 		ret
-
-
-
-printhlx:
-		push af
-		ld a,h
-		call con_printx ; print bad address high byte
-		ld a,l
-		call con_printx ; print bad address low byte
-		pop af
-		ret
-
-printrange:     ; print HX "-" (HX)+BC-1 to indicate range of an operation
-		push bc
-		call printhlx
-		ld a,'-'
-		mac_con_printc
-		; push hl
-		dec hl
-		pop bc
-		add hl,bc
-		call printhlx
-		; pop hl
-		ret
 
 printbiterr_iy:
 		ld a,'7'
 		ld b,8
 	.showbit:
-		bit 7,e
-		jr z,.zero
+		; bit 7,e
+		; jr z,.zero
+		rlc e
+		jr nc,.zero
 		ld (ix+0),a
 		jr .cont
 	.zero:
@@ -311,34 +268,22 @@ printbiterr_iy:
 	.cont:
 		inc ix
 		dec a
-		rlc e
 		djnz .showbit
 
 		iyret
 
 
-; Fill screen with hex 0h to ffh over and over again. Should see all possible characters. 
+
 chartest:
-		ld hl,VBASE	; start of video ram
-		ld bc,VSIZE	; video ram size - 1kB
-		ld a,0
+		ld hl,VBASE
+		ld bc,VSIZE
+		jr charset
 
-	.charloop:
-		ld (hl),a	; copy A to byte pointed by HL
-		inc a		; increments A
-		cpi		    ; increments HL, decrements BC (and does a CP)
-		jp pe, .charloop
-
-		iyret
-
-; Print the character set at the current location on the screen (pointed to by ix)
-charset:
-		ld a,ixh	; get the current location into hl
-		ld h,a
-		ld a,ixl
-		ld l,a
-
+charset_here:
+		push ix
+		pop hl
 		ld bc,$100	; one copy of the 256-byte character set
+charset:
 		ld a,0
 	.charloop:
 		ld (hl),a	; copy A to byte pointed by HL
@@ -354,10 +299,16 @@ include "inc/memtest-march.asm"
 include "inc/trs80con.asm"
 include "inc/trs80music.asm"
 
+; vramname:	dbz " 1K VRAM "
+; dram4name:	dbz " 4K DRAM "
+; dram16name:	dbz "16K DRAM "
 
-vramname:	dbz " 1K VRAM "
-dram4name:	dbz " 4K DRAM "
-dram16name:	dbz "16K DRAM "
+label_vram:	dbz " 1K VRAM 3C00-3FFF "
+label_dram4k:	dbz " 4K DRAM 4000-4FFF "
+label_dram16k1:	dbz "16K DRAM 4000-7FFF "
+label_dram16k2:	dbz "16K DRAM 8000-BFFF "
+label_dram16k3:	dbz "16K DRAM C000-FFFF "
+
 vramstackmsg:	dbz "STACK IN VRAM ->"
 bannermsg:	dbz "TRS-80 M1/M3 TEST ROM - FRANK IZ8DWF / DAVE KI3V / ADRIAN BLACK"
 charsetmsg:	dbz "-CHARACTER SET-"
@@ -366,23 +317,7 @@ okmsg:		dbz "---OK--- "
 biterrmsg:	dbz "BIT ERRS "
 haltmsg:	dbz " STACK ERROR! HALT!"
 ok7msg:		dbz "OK! (7-BIT)"
-msg7vram:	dbz "(7-bit)"
+; msg7vram:	dbz "(7-bit)"
 ramstackmsg:	dbz "OK! (USING FOR STACK)"
 msgstack:	dbz "(USING FOR STACK)"
 msgstacktest:	dbz "TESTING STACK AREA..."
-; banks16msg:	db "TESTING 16K DRAM BANKS:", 0
-; banks4msg:	db "TESTING 4K DRAM BANKS:", 0
-
-;0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-;40-7F 7654321   80-BF 7654321   C0-FF 7654321
-
-;0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-;Detected 4k DRAM bank size.
-;
-;4000-7FFF: OK!
-;8000-BFFF: testing... 7---3--
-;C000-FFFF: bit errors 7654321 (bank missing?)
-;
-;5000-5FFF: ..testing.. 7...3..
-;4000-4FFF: OK!
-;6000-6FFF: bit errors: 7654321 (bank missing?)

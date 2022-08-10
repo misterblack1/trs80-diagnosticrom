@@ -4,6 +4,7 @@ ASMFILES = $(TARGET:%=%.asm)
 CIMFILES = $(TARGET:%=%.cim)
 BDSFILES = $(TARGET:%=%.bds)
 
+# ZMAC = zmac --zmac -m --od . --oo cim,bds,lst
 ZMAC = zmac --zmac -m --od . --oo cim,bds,lst
 
 trs80testrom.cim: inc/trs80diag.mac inc/memtest-march.asm inc/trs80con.asm inc/trs80music.asm Makefile

@@ -12,6 +12,7 @@
 ; test ram using march algorithm. Arguments:
 ;	hl = current memory position under test (l is cleared... always start beginning of page)
 ;	bc = bytes remaining to test (c is ignored... always test whole pages)
+;	ix = return address
 ; returns:
 ;	e = all errored bits found in this block/bank/range of memory
 ; destroys: a,bc,d,hl
@@ -105,10 +106,6 @@ memtestmarch:
 		link_loadregs
 		add hl,bc			; move to end of the test area
 		dec hl
-if SIMERROR_MARCH
-		ld a,r
-		ld (hl),a			; insert a synthetic error
-endif
 	mtm6loop:
 		ld a,(hl)
 		cp d
@@ -137,3 +134,4 @@ endif
 	mtm_return:
 		iyret
 
+;-----------------------------------------------------------------------------
