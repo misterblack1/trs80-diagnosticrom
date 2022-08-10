@@ -71,6 +71,12 @@ You do not need to have any ROM installed in U105 or U106 during the test. A bad
 
 You do not need the interconnect between JP1A and JP1B. This is only to connect the floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
 
+## Knowing what might be wrong
+
+![Mother Board Components](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%203%20Motherboard%20Layout%20Small%20800.png?raw=true)
+
+The Model 3 motherboard layout is shown above. I recommend refering to the Radio Shack Technical Service Manual for help in identifying what compoments might be bad on your system, but the picture should give you a head-start.
+
 ## Building
 
 This repository will contain the assembled ROM image.  To assemble, you will need
