@@ -24,11 +24,10 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 - Testing up to 48k of DRAM, looping continually 
 - Fits withtin 2K so the ROM can be used on a Level 1 machine
 
-<sup>
-*1: The stack can only be used if all 8-bits of VRAM are available and working. If there is a VRAM fault, the system will make a tonoe and halt. If there is only 7-bit of VRAM (stock Model 1) the RAM test will test and use the first vank of DRAM for the stack. 
+_*1: The stack can only be used if all 8-bits of VRAM are available and working. If there is a VRAM fault, the system will make a tonoe and halt. If there is only 7-bit of VRAM (stock Model 1) the RAM test will test and use the first vank of DRAM for the stack. 
 
-*2: When testing, if the ROM detects 4K, it will only test 4k and stop. This is the mazimum allowed RAM in a 4K configuration. When 16k is detected, it will attempt to test all 3 banks oF DRAM, even if only 1 is installed. 
-</sup>
+*2: When testing, if the ROM detects 4K, it will only test 4k and stop. This is the mazimum allowed RAM in a 4K configuration. When 16k is detected, it will attempt to test all 3 banks oF DRAM, even if only 1 is installed. _
+
 
 ## Future improvements
 
