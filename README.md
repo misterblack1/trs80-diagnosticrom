@@ -1,5 +1,7 @@
 # TRS-80 Diagnostic ROMs
 
+![Normal Operation](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Normal%20Operation%2016K%20Model%203.jpg?raw=true)
+
 Currently, what exiats is a release for the:
 
 TRS-80 Model 1 and 3
