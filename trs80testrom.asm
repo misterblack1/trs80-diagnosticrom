@@ -12,6 +12,9 @@
 ; are the ONLY place to store information, which is why some of this code is structured
 ; oddly.
 ;
+; Assembly purists will shudder at the extensive use of macros.  They're not wrong,
+; but the need to repeat 
+;
 ; Globally, the contents of these registers must be preserved
 ;	e = bit errors in the region of memory currently being tested
 ;	ix = current location in VRAM for printing messages
