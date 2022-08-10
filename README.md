@@ -3,7 +3,7 @@
 ![Normal Operation](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Normal%20Operation%2016K%20Model%203.jpg?raw=true)
 
 #### Main contributors:
-- David KI3V - Programmer and designer
+- Dave Giller KI3V - Programmer and designer
 - Frank IZ8DWF - Testing methodology and initial test routines
 - Adrian Black - Testing, initial concept and QA
 

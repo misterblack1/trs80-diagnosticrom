@@ -5,22 +5,28 @@ TARGET = trs80testrom
 ASMFILES = $(TARGET:%=%.asm)
 CIMFILES = $(TARGET:%=%.cim)
 BDSFILES = $(TARGET:%=%.bds)
+BINFILES = $(TARGET:%=%.bin)
+HEXFILES = $(TARGET:%=%.hex)
 
-trs80testrom.cim: inc/trs80diag.mac inc/memtest-march.asm inc/trs80con.asm inc/trs80music.asm Makefile
+trs80testrom.bin: inc/trs80diag.mac inc/memtest-march.asm inc/trs80con.asm inc/trs80music.asm Makefile
 
-.PHONY: clean
+.PHONY: clean realclean
 clean: 
 	-$(RM) $(wildcard $(BDSFILES) $(TARGET:%=%.txt) $(TARGET:%=%.lst))
 
+realclean: clean
+	-$(RM) $(wildcard $(CIMFILES) $(BINFILES) $(HEXFILES))
 
-$(BDSFILES): %.bds: %.cim
+
+$(BDSFILES): %.bds: %.bin
 
 
-%.cim: %.asm Makefile os.mk
-	@echo $(ZMAC) --zmac -m --od . --oo cim,bds,lst $<
+%.bin: %.asm Makefile os.mk
+	@echo $(ZMAC) --zmac -m --od . --oo cim,bds,lst,hex $<
 	@-$(SGR_YELLOW)
-	@$(ZMAC) --zmac -m --od . --oo cim,bds,lst $<
+	@$(ZMAC) --zmac -m --od . --oo cim,bds,lst,hex $<
 	@-$(SGR_RESET)
+	$(REN) $(<:%.asm=%.cim) $@
 
 
 .PHONY: emu 
@@ -52,10 +58,10 @@ emu3-3: emu
 
 BREAKFLAGS=$(foreach brk,$(BREAK),-b $(brk))
 
-%.emu: %.bds %.cim
+%.emu: %.bds %.bin
 	# @osascript -e 'quit app "trs80gp"' ; sleep 0.25
-	$(EMU) -vol 20 -rand $(SIMFLAGS) $(BREAKFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
+	$(EMU) -vol 20 -rand $(SIMFLAGS) $(BREAKFLAGS) -rom $(abspath $*.bin) -ls $(abspath $*.bds)
 
 .DEFAULT: all
 .PHONY: all
-all: $(CIMFILES)
+all: $(BINFILES)

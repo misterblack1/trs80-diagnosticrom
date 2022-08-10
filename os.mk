@@ -6,6 +6,7 @@ ifeq ($(OS),Windows_NT)
 # buiding on Windows currently untested
     RM = cmd //C del //Q //F
     RRM = cmd //C rmdir //Q //S
+	REN = ren
 	ZMAC = "C:\Program Files (x86)\zmac\zmac"
 	SGR_YELLOW =
 	SGR_GREEN =
@@ -13,7 +14,8 @@ ifeq ($(OS),Windows_NT)
 	# STAT =
 else
     RRM = $(RM) -r
-	ZMAC = zmac 
+	REN = mv
+	ZMAC = zmac
 	SGR_YELLOW = tput sgr0 ; tput setaf 3 ; tput bold
 	SGR_GREEN = tput setaf 2; tput bold 
 	SGR_RESET = tput sgr0
