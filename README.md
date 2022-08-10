@@ -9,7 +9,7 @@
 
 ## Introduction from Adrian
 
-This projet was born out of a broken TRS-80 Model 3 that I was working on. I could not tell if the system was even "executing code," so I used an early version of this ROM to help diagnose the problem.
+This project was born out of a broken TRS-80 Model 3 that I was working on. I could not tell if the system was even "executing code," so I used an early version of this ROM to help diagnose the problem.
 
 Please know that the main goal of this ROM is to test the functionality of the video RAM (VRAM) and the dynamic RAM (DRAM, system memory.) It does not test any other component unrelated to those two subsystems. If a TRS-80 has good VRAM and DRAM, it should boot into basic where you can then run further tests. 
 
