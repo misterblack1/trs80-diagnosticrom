@@ -60,7 +60,7 @@ To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an ad
 
 [PCBway Project Link for EPROM adapter](https://www.pcbway.com/project/shareproject/Adapter_2364___27128__by_Bobbel_.html)
 
-The assembled ROM file, ready to be burned to EPROM or EEPROM, is `trs80testrom.cim`.  This is a "**C**ore **I**n-**M**emory" file, in the terminology of the `zmac` assembler.
+The assembled ROM, ready to be burned to EPROM or EEPROM, is `trs80testrom.bin` or `trs80testrom.hex`.
 
 One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up. (Address `$0000`)
   
