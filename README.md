@@ -20,13 +20,28 @@ In addition, we have implemented some extra nice features in this rom:
 - Auto detection of VRAM type (The Model 1 comes with 7-bit VRAM as stock, so it cannot be used as a stack)
 - Auto detection of bank size (4k or 16k)
 - Testing up to 48k of DRAM, running continually 
-- Fits withtin 2K so the ROM can be used on a Level 1 Model 1
+- Fits withtin 2K so the ROM can be used on a Level 1 machine
 
-We are working on a Model 2 version next. The RAM test code should be portable to other Z80 systems. 
+## Future improvements
 
-## Notes about running this diagnostic on the Model 3
+- Porting the ROM to other TRS-80 systems like the Model 2 and Model 4
+- Porting the diagnostic routines to other Z80 systems
 
-The VRAM test detects if the machine is a 7-bit VRAM Model 1 by testing the VRAM. If bit 6 (data line 6) comes back as bad, it assumes it's a model 1. If you have a Model 3 or a 8-bit VRAM model 1 and it says it's using the stack in DRAM, then bit 6 of the VRAM has a problem and you must fix that. 
+# Running this diagnostic ROM on a TRS-80 Model 1 or Model 3
+
+To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an adapter to allow use of an EPROM in the U104 ROM socket. This socket is designed for a 2364 which does not have a compatible pinout with a 2764 EPROM. Adapter PCBs are widely available on the usual sources, or you can make some PCBs at this link:
+
+<<pcb way link>>
+  
+One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up. (Address $0000)
+  
+On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip is a 2332, so a 2732 should work in place of it. (Unconfirmed. I used my 2364 to 2764 adapter in this socket and it mostly worked, except I had to write the ROM into the second top half of the 28b64. Load the ROM image into address $1000 in your EPROM software, then write to the chip.)
+  
+You can leave the othe ROM chips installed in the system. 
+
+The VRAM test detects if the machine is a 7-bit VRAM Model 1 by testing the VRAM. If bit 6 (data line 6) comes back as bad, it assumes it's a model 1.
+  
+If you have a Model 3 or a 8-bit VRAM Model 1 (this is also known as the lower-case mode, where one extra VRAM chip is added in) the Diagnostic screen will say it's using the VRAM for the processor stack. If you areon a Model 3 or 8-bit VRAM Model 1 and the ROM says it is using DRAM for the stack, **then bit 6 of the VRAM has a problem and you must fix that. **
 
 When bad bits are detected in VRAM or DRAM, you will hear a beep code telling you which bit is bad. The beeping goes from Bit 7 (MSB) to Bit 0 (LSB.) So if you hear, high high high low high high high high, then the bad bit is BIT 4 (of 7). You will not hear a VRAM beep code for a problem in bit-6 because it assumes it is a Model 1. (See above.)
 
