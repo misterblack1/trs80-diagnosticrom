@@ -1,4 +1,4 @@
-# TRS-80 Diagnostic ROMs
+# TRS-80 Diagnostic ROM
 
 ![Normal Operation](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Normal%20Operation%2016K%20Model%203.jpg?raw=true)
 
@@ -38,8 +38,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 - Porting the ROM to other TRS-80 systems like the Model 2 and Model 4
 - Porting the diagnostic routines to other Z80 systems
-
-
+- More comprehensive documentation
 
 # Running this diagnostic ROM on a TRS-80 Model 1 or Model 3
 
@@ -52,29 +51,17 @@ One you have a programmed 2764 or 28B64C, insert that into the adapter and insta
   
 On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip is a 2332, so a 2732 should work in place of it. (Unconfirmed. I used my 2364 to 2764 adapter in this socket and it mostly worked, except I had to write the ROM into the second top half of the 28b64. Load the ROM image into address $1000 in your EPROM software, then write to the chip.)
   
-You can leave the othe ROM chips installed in the system. 
-
-The VRAM test detects if the machine is a 7-bit VRAM Model 1 by testing the VRAM. If bit 6 (data line 6) comes back as bad, it assumes it's a model 1.
-  
-If you have a Model 3 or a 8-bit VRAM Model 1 (this is also known as the lower-case mode, where one extra VRAM chip is added in) the Diagnostic screen will say it's using the VRAM for the processor stack. If you areon a Model 3 or 8-bit VRAM Model 1 and the ROM says it is using DRAM for the stack, **then bit 6 of the VRAM has a problem and you must fix that. **
-
-When bad bits are detected in VRAM or DRAM, you will hear a beep code telling you which bit is bad. The beeping goes from Bit 7 (MSB) to Bit 0 (LSB.) So if you hear, high high high low high high high high, then the bad bit is BIT 4 (of 7). You will not hear a VRAM beep code for a problem in bit-6 because it assumes it is a Model 1. (See above.)
-
-4K DRAM machinse can only ever have 4K of RAM, so only the first 4K of ram is tested and no more.
-
-On the Model 3, you **must** have a working connection on JP2A and JP2B to run this diagnostic. Both the cassette port (for audio output) but more importantly the video subsystem is across this interconnect. Bits 0 and bit 1 of this interconnection are required for the cassette port audio, but all 8 bits are needed for video to work. 
-
-On the Model 3, the cassette port output is the pin closest to the keyboard connector. (Connector J3) On the Model 1, you can either clip a test lead onto the cassette port, or use the cassette DIN cable to get audio output. 
-
-You do not need any DRAM installed in the machine for the diagnostic to run. If you have good working VRAM but no working DRAM, you should see it trying to test the DRAM, but all banks will come back as bad. Keep in mand a stuck or bad DRAM bus transciever can trash the entire bus, causing the VRAM test to also fail.
-
-You do not need the keyboard connected for the system to run the diagnostic. The keyboard is not used during the test at all.
-
-The diagnostic ROM _must_ be installed into U104 on the TRS-80 Model 3. You must use a 2364 to 27XXX adapter. The one I used is made for 27128, but it works just fine with 2764 and more importantly 28B64C (EEPROMs.) You can also use this same adapter in U105 (for testing replacment of that ROM.) You can use a normal 2716 in U106 if you need to test replacing that ROM.
-
-You do not need to have any ROM installed in U105 or U106 during the test. A bad ROM in one of those sockets could cause the computer to not work.
-
-You do not need the interconnect between JP1A and JP1B. This is only to connect the floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
+- The VRAM test detects if the machine is a 7-bit VRAM Model 1 by testing the VRAM. If bit 6 (data line 6) comes back as bad, it assumes it's a model 1.
+- If you have a Model 3 or a 8-bit VRAM Model 1 (this is also known as the lower-case mode, where one extra VRAM chip is added in) the Diagnostic screen will say it's using the VRAM for the processor stack. If you areon a Model 3 or 8-bit VRAM Model 1 and the ROM says it is using DRAM for the stack, **then bit 6 of the VRAM has a problem and you must fix that. **
+- When bad bits are detected in VRAM or DRAM, you will hear a beep code telling you which bit is bad. The beeping goes from Bit 7 (MSB) to Bit 0 (LSB.) So if you hear, high high high low high high high high, then the bad bit is BIT 4 (of 7). You will not hear a VRAM beep code for a problem in bit-6 because it assumes it is a Model 1. (See above.)
+- 4K DRAM machinse can only ever have 4K of RAM, so only the first 4K of ram is tested and no more.
+- On the Model 3, you **must** have a working connection on JP2A and JP2B to run this diagnostic. Both the cassette port (for audio output) but more importantly the video subsystem is across this interconnect. Bits 0 and bit 1 of this interconnection are required for the cassette port audio, but all 8 bits are needed for video to work. 
+- On the Model 3, the cassette port output is the pin closest to the keyboard connector. (Connector J3) On the Model 1, you can either clip a test lead onto the cassette port, or use the cassette DIN cable to get audio output. 
+- You do not need any DRAM installed in the machine for the diagnostic to run. If you have good working VRAM but no working DRAM, you should see it trying to test the DRAM, but all banks will come back as bad. Keep in mand a stuck or bad DRAM bus transciever can trash the entire bus, causing the VRAM test to also fail.
+- You do not need the keyboard connected for the system to run the diagnostic. The keyboard is not used during the test at all.
+- The diagnostic ROM _must_ be installed into U104 on the TRS-80 Model 3. You must use a 2364 to 27XXX adapter. The one I used is made for 27128, but it works just fine with 2764 and more importantly 28B64C (EEPROMs.) You can also use this same adapter in U105 (for testing replacment of that ROM.) You can use a normal 2716 in U106 if you need to test replacing that ROM.
+- You do not need to have any ROM installed in U105 or U106 during the test. A bad ROM in one of those sockets could cause the computer to not work, but nothing is read from the other ROM chips.
+- You do not need the interconnect between JP1A and JP1B. This is only to connect the floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
 
 ## Knowing what might be wrong
 
