@@ -2,9 +2,29 @@
 
 ![Normal Operation](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Normal%20Operation%2016K%20Model%203.jpg?raw=true)
 
-Currently, what exiats is a release for the:
+## Introduction
 
-TRS-80 Model 1 and 3
+This projet was born out of a broken TRS-80 Model 3 that I was working on. I could not tell if the system was even executing code, so used an early version of this ROM to help diagnose the prolbme. 
+
+<< Insert video links here when live >>
+
+In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudamentary RAM test that is inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is far supirior to normal simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which is widely viewed as one of the best tests there is.
+
+In addition, we have implemented some extra nice features in this rom:
+
+## Feature List
+
+- One ROM for both Model 1 and 3
+- Audio feedback via the cassette port, so you can tell what's happening even if you have no video display
+- Testing the VRAM using a march test, then Using the VRAM as the stack so the ROM can fully work without any DRAM installed in the system
+- Auto detection of VRAM type (The Model 1 comes with 7-bit VRAM as stock, so it cannot be used as a stack)
+- Auto detection of bank size (4k or 16k)
+- Testing up to 48k of DRAM, running continually 
+- Fits withtin 2K so the ROM can be used on a Level 1 Model 1
+
+We are working on a Model 2 version next. The RAM test code should be portable to other Z80 systems. 
+
+## Notes about running this diagnostic on the Model 3
 
 The VRAM test detects if the machine is a 7-bit VRAM Model 1 by testing the VRAM. If bit 6 (data line 6) comes back as bad, it assumes it's a model 1. If you have a Model 3 or a 8-bit VRAM model 1 and it says it's using the stack in DRAM, then bit 6 of the VRAM has a problem and you must fix that. 
 
