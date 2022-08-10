@@ -1,25 +1,26 @@
 # This Makefile requires GNU Make or equivalent.
+include os.mk
+
 TARGET = trs80testrom
 ASMFILES = $(TARGET:%=%.asm)
 CIMFILES = $(TARGET:%=%.cim)
 BDSFILES = $(TARGET:%=%.bds)
 
-# ZMAC = zmac --zmac -m --od . --oo cim,bds,lst
-ZMAC = zmac --zmac -m --od . --oo cim,bds,lst
-
 trs80testrom.cim: inc/trs80diag.mac inc/memtest-march.asm inc/trs80con.asm inc/trs80music.asm Makefile
 
 .PHONY: clean
 clean: 
-	rm -f $(wildcard $(BDSFILES) $(TARGET:%=%.txt) $(TARGET:%=%.lst))
+	-$(RM) $(wildcard $(BDSFILES) $(TARGET:%=%.txt) $(TARGET:%=%.lst))
 
 
 $(BDSFILES): %.bds: %.cim
 
-%.cim: %.asm Makefile
-	@echo $(ZMAC) $< ; tput sgr0 ; tput setaf 3 ; tput bold
-	@$(ZMAC) $<
-	@tput setaf 2; tput bold; stat -f "%z %#Xz %N" $@ ; tput sgr0
+
+%.cim: %.asm Makefile os.mk
+	@echo $(ZMAC) --zmac -m --od . --oo cim,bds,lst $<
+	@-$(SGR_YELLOW)
+	@$(ZMAC) --zmac -m --od . --oo cim,bds,lst $<
+	@-$(SGR_RESET)
 
 
 .PHONY: emu 
@@ -52,8 +53,8 @@ emu3-3: emu
 BREAKFLAGS=$(foreach brk,$(BREAK),-b $(brk))
 
 %.emu: %.bds %.cim
-	@osascript -e 'quit app "trs80gp"' ; sleep 0.25
-	open -a trs80gp --args -vol 20 -rand $(SIMFLAGS) $(BREAKFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
+	# @osascript -e 'quit app "trs80gp"' ; sleep 0.25
+	$(EMU) -vol 20 -rand $(SIMFLAGS) $(BREAKFLAGS) -rom $(abspath $*.cim) -ls $(abspath $*.bds)
 
 .DEFAULT: all
 .PHONY: all
