@@ -11,7 +11,7 @@ trs80testrom.cim: inc/trs80diag.mac inc/memtest-march.asm inc/trs80con.asm inc/t
 
 .PHONY: clean
 clean: 
-	rm -f $(wildcard $(BDSFILES) $(CIMFILES) $(TARGET:%=%.txt) $(TARGET:%=%.lst))
+	rm -f $(wildcard $(BDSFILES) $(TARGET:%=%.txt) $(TARGET:%=%.lst))
 
 
 $(BDSFILES): %.bds: %.cim
