@@ -17,7 +17,7 @@ You should familiarize yourself with the system schematics and design of the TRS
 
 << Insert video links here when live >>
 
-In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudimentary RAM test that is inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the normal simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which is widely viewed as one of the best tests there is.
+In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
 ## Feature List
 
