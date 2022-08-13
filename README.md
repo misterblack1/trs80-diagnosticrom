@@ -15,7 +15,10 @@ Please know that the main goal of this ROM is to test the functionality of the v
 
 You should familiarize yourself with the system schematics and design of the TRS-80 before using this ROM since problems in other areas of the system can sometimes manifest themselves of a RAM problem. 
 
-<< Insert video links here when live >>
+Videos:
+- [Part 1](https://youtu.be/EGFKjjlvKf4)
+- Part 2 (not yet)
+- Companion Video (ROM deep dive, not yet)
 
 In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
