@@ -13,16 +13,27 @@
 ; test ram using march algorithm. Arguments:
 ;	hl = current memory position under test (l is cleared... always start beginning of page)
 ;	bc = bytes remaining to test (c is ignored... always test whole pages)
-;	iy = return address
+;	iy = test data structure
 ; returns:
 ;	e = all errored bits found in this block/bank/range of memory
 ; destroys: a,bc,d,hl
 ; preserves: ix
 
+_loadregs .macro
+		ld c,(iy+0)
+		ld b,(iy+1)
+		ld l,(iy+2)
+		ld h,(iy+3)
+.endm
+
+spt_memtestmarch:
+		pop iy
+		; ld e,0
+
 memtestmarch:
 		ld d,0				; set the first testing value to 0
 	mtm1:
-		link_loadregs
+		_loadregs
 	mtm1loop:				; fill initial value upwards
 		ld (hl),d
 		inc hl
@@ -35,7 +46,7 @@ memtestmarch:
 		; cpi
 		; jp pe, mtm1loop
 	mtm2:					; read value, write complement upwards
-		link_loadregs
+		_loadregs
 	mtm2loop:
 		ld a,(hl)
 		cp d				; compare to value
@@ -60,7 +71,7 @@ memtestmarch:
 		; jp pe,mtm2loop			; repeat for all testing area
 		
 	mtm3:					; read complement, write original value upwards
-		link_loadregs
+		_loadregs
 	mtm3loop:
 		ld a,(hl)
 		cpl
@@ -92,7 +103,7 @@ memtestmarch:
 		jr mtm1
 
 	mtm4:					; read test value, write complement downwards
-		link_loadregs
+		_loadregs
 		add hl,bc			; move to end of the test area
 		dec hl
 	mtm4loop:
@@ -119,7 +130,7 @@ memtestmarch:
 		; jp pe, mtm4loop
 
 	mtm5:					; read complement, write value downwards
-		link_loadregs
+		_loadregs
 		add hl,bc			; move to end of the test area
 		dec hl
 	mtm5loop:
@@ -146,7 +157,7 @@ memtestmarch:
 		; jp pe, mtm5loop
 	
 	mtm6:					; final check that all are zero
-		link_loadregs
+		_loadregs
 		add hl,bc			; move to end of the test area
 		dec hl
 	mtm6loop:
@@ -179,9 +190,9 @@ memtestmarch:
 	mtm_done:
 		sub a				; set carry flag if e is nonzero
 		or e
-		jr z,mtm_return
-		scf
 	mtm_return:
-		iyret
+		ret z
+		scf
+		ret
 
 ;-----------------------------------------------------------------------------

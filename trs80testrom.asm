@@ -1,3 +1,4 @@
+; code: language=z80-asm tabSize=8
 .include "inc/trs80diag.mac"
 
 ; Notes on global register allocation

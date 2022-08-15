@@ -1,5 +1,5 @@
-	.list -1
-	.mlist -1
+	.list 1
+	.mlist 1
 
 ; simulate bit errors in these modules
 SIMERROR_RND defl 0
@@ -164,8 +164,6 @@ play_bit_errors .macro
 
 		ld d,8
 	.`showbit:
-		; bit 7,e
-		; jr z,.`zero
 		rlc e
 		jr nc,.`zero
 		ld hl,bitbadnotes
@@ -175,7 +173,6 @@ play_bit_errors .macro
 	.`msbe_cont:
 		iycall playmusic
 		pause $4000
-		; rlc e
 		dec d
 		jr nz,.`showbit
 		jr .`done
@@ -237,9 +234,9 @@ mac_reportmem_stackbank .macro
 ;	de
 ;	iy
 
-mac_con_home .macro
-		ld ix,VBASE
-.endm
+; mac_con_home .macro
+; 		ld ix,VBASE
+; .endm
 
 mac_con_clear .macro
 		iycall con_clear_iy
@@ -275,26 +272,26 @@ mac_con_printc .macro
 ; 		adc a, $40		; >9, so move up to 'A'
 ; .endm
 
-mac_itoh_nybble .macro
-		and $0F			; use just the lower bits
-		cp $0A			; if over 9 set carry flag
-		ccf			; invert the flag
-		adc a,$30		; move into number range
-		daa			; convert to decimal
-.endm
+; mac_itoh_nybble .macro
+; 		and $0F			; use just the lower bits
+; 		cp $0A			; if over 9 set carry flag
+; 		ccf			; invert the flag
+; 		adc a,$30		; move into number range
+; 		daa			; convert to decimal
+; .endm
 
-mac_con_printx .macro
-		ld b,a			; save a copy of the number to convert
-		rra			; get upper nybble
-		rra
-		rra
-		rra
-		mac_itoh_nybble		; convert to ascii
-		mac_con_printc
-		ld a,b			; fetch lower nybble
-		mac_itoh_nybble		; convert to ascii
-		mac_con_printc		
-.endm
+; mac_con_printx .macro
+; 		ld b,a			; save a copy of the number to convert
+; 		rra			; get upper nybble
+; 		rra
+; 		rra
+; 		rra
+; 		mac_itoh_nybble		; convert to ascii
+; 		mac_con_printc
+; 		ld a,b			; fetch lower nybble
+; 		mac_itoh_nybble		; convert to ascii
+; 		mac_con_printc		
+; .endm
 
 mac_con_CR .macro
 		ld a,ixl
@@ -368,23 +365,23 @@ mac_con_clear_eol_iy .macro
 		iycall con_clear_eol_iy
 .endm
 
-; mac_con_clear_eol .macro
-; 	.local loop
-; 		ld a,ixh
-; 		ld h,a
-; 		ld a,ixl
-; 		ld l,a
+mac_con_clear_eol .macro
+	.local loop
+		ld a,ixh
+		ld h,a
+		ld a,ixl
+		ld l,a
 		
-; 	.`loop:
-; 		ld a,' '
-; 		mac_con_printc
-; 		ld a,ixl
-; 		and $3F			; see if we are at the beginning of the line
-; 		jr z,.`loop
+	.`loop:
+		ld a,' '
+		mac_con_printc
+		ld a,ixl
+		and $3F			; see if we are at the beginning of the line
+		jr z,.`loop
 
-; 		ld a,h
-; 		ld ixh,a
-; 		ld a,l
-; 		ld ixl,a
-; endm
+		ld a,h
+		ld ixh,a
+		ld a,l
+		ld ixl,a
+endm
 

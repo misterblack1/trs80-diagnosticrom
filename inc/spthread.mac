@@ -1,0 +1,71 @@
+spthread_begin .macro
+	local stackstart
+		ld sp,.`stackstart
+		ret
+	.`stackstart:
+.endm
+
+spthread_end .macro
+		dw $+2
+.endm
+
+; spthread_enter_iy .macro
+; 		ld	iy,0		; copy old sp to iy
+; 		add	iy,sp
+; 		spthread_begin
+; .endm
+
+spthread_save .macro
+		exx
+		ld	d,h
+		ld	e,l
+		ld	hl,0		; copy old sp to iy
+		add	hl,sp
+		exx
+.endm
+
+spthread_enter .macro
+		spthread_save
+		spthread_begin
+.endm
+
+spthread_restore .macro
+		exx
+		ld	sp,hl		; resume from the thread location saved in hl'
+		ld	h,d
+		ld	l,e
+		exx
+.endm
+
+spthread_leave .macro
+		spthread_end
+		spthread_restore
+.endm
+
+; spt_con_offset .macro row,col
+; 	dw VBASE+(row*VLINE)+col
+; .endm
+
+spt_con_offset .macro row,col
+	dw VBASE+(row*VLINE)+col
+.endm
+
+
+; spt_link .macro reg,ramstack,proc
+; 		ld 	reg,0		; copy sp to iy
+; 		add	reg,sp
+; 		ld	sp,ramstack
+; 		call	proc
+; .endm
+
+; spt_call .macro reg,newthread
+; 		ld	reg,0
+; 		add	reg,sp
+; 		ld sp,newthread
+; 		ret
+; .endm
+
+; spt_unwind .macro reg
+; 		ld	sp,reg
+; .endm
+
