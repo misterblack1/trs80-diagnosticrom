@@ -186,3 +186,21 @@ jump_nonzero:
 ```
 
 By changing `SP` from a machine-level threaded-code "instruction", your code can move around inside the threaded instruction stream.
+
+## But... why?
+
+Some might be wondering why not simply use the `IX` and `IY` registers to store return addresses.  After all, it is very easy to make a macro to do this:
+
+```
+	ld	iy,$+3		; save the return address
+	jp	musub		; 
+	; ...
+
+mysub:	; do something useful
+	; ...
+	jp	(iy)		; return from whence we came
+```
+
+We have three registers available with similar powers, `IX`, `IY`, and even `HL`.  And this is _much_ faster and simpler than the whole SPT mess.
+
+The reason is simple.  In this diagnostics ROM, where the goal was to operate with no RAM whatsoever, giving up `IX` and `IY` was too high a price to pay when they are needed for global variables.
