@@ -11,8 +11,8 @@ spt_ld_iy:	pop	iy
 ; 		pop 	hl
 ; 		ret
 
-spt_clr_e:	ld	e,0		; just clear reg e
-		ret
+; spt_clr_e:	ld	e,0		; just clear reg e
+; 		ret
 
 
 ; spt_exit:	ld	sp,iy		; resume from the thread location saved in iy

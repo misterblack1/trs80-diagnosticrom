@@ -5,134 +5,162 @@
 ; preserves: de,ix
 
 nop12 .macro
-		jr $+2
+		jr	$+2
 .endm
 
 spt_playmusic:	
-		pop hl
+		pop	hl
 		; fall through to playmusic
 
 playmusic:	;music routine
 	.getnote:
-		ld c,(hl)
-		ld a,c
-		or a
-		jr z,.end		; zero duration: we are done
+		ld	c,(hl)
+		ld	a,c
+		or	a
+		jr	z,.end			; zero duration: we are done
 
-		inc hl
-		ld a,(hl)
-		or a
-		jr z,.rest		; zero frequency: rest
+		inc	hl
+		ld	a,(hl)
+		or	a
+		jr	z,.rest			; zero frequency: rest
 
-	.cycle:
-		ld b,(hl)
-		ld a,1
-		out ($FF),a
 
-	.looplo:
+		ld	a,2
+	.cycle:					; tone cycle.  First low part of square wave
+		ld	b,(hl)
+		out	($FF),a
+	.loophalf:
 		nop12
-		; nop
-		; nop
-		djnz .looplo
-		
-		ld b,(hl)
-		ld a,2
-		out ($FF),a
+		djnz	.loophalf
+		xor	3			; invert the cassette bits
 
-	.loophi:
+		ld	b,(hl)
+		out	($FF),a
+	.loophalf2:
 		nop12
-		; nop
-		; nop
-		djnz .loophi
+		djnz	.loophalf2
+		xor	3			; invert the cassette bits
 
-		dec c
-		jr nz,.cycle
-		jr .next
+		ld	b,(hl)
+		out	($FF),a
+	.loophalf3:
+		nop12
+		djnz	.loophalf3
+		xor	3			; invert the cassette bits
 
+		bit	1,a
+		jr	nz,.cycle
+
+		dec	c
+		jr	nz,.cycle
+
+	; 	ld	b,80
+	; .between_inner:				; delay between notes
+	; 	nop12
+	; 	djnz	.between_inner
+
+		jr	.nextnote
 
 	.rest:
-		ld b,0
-	.restloop1:
+		ld	b,0
+	.restloop:
 		nop12
-		djnz .restloop1
-	; .restloop2:
-	; 	djnz .restloop2
-
-		dec c
-		jr nz,.rest
-
-
-	.next:
-		ld a,(hl)
-		inc hl
-
-	; delay between notes (needed?)
-		; ld a,1
-	; .between:
-		ld b,80
-	.between_inner:
 		nop12
-		djnz .between_inner
-		; dec a
-		; jr nz,.between
+		djnz	.restloop
 
-		jr .getnote
+		dec	c
+		jr	nz,.rest
+
+
+	.nextnote:
+		ld	a,(hl)
+		inc	hl
+
+		jr	.getnote
 
 	.end:
-		ld a,0
-		out ($FF),a
+		ld	a,0
+		out	($FF),a
 		ret
 
-welcomemusic:
-		db $60,$40
-		db $00,$00 ;end
+tones_welcome:
+		db	$60,$40
+		db	$00,$00 ;end
 
-sadvram:	db $30,$50 ;each note is first byte duration
-		db $30,$90 ;then next byte frequency -- the higher the second byte, the lower the frequency
-		db $30,$50
-		db $30,$90
-		db $30,$50
-		db $30,$90 
-		db $30,$50
-		db $f0,$c0
-		db $40,$00 ;rest
-		db $00,$00 ;end
+tones_vram:	db	$10,$50 ;each note is first byte duration
+		db	$10,$90 ;then next byte frequency -- the higher the second byte, the lower the frequency
+		db	$10,$50
+		db	$10,$90
+		db	$10,$50
+		db	$10,$90 
+		db	$10,$50
+		db	$60,$c0
+		; db	$40,$00 ;rest
+		db	$00,$00 ;end
 
-sadmusic:	db $30,$50 ;each note is first byte duration
-		db $30,$60 ;then next byte frequency -- the higher the second byte, the lower the frequency
-		db $30,$70
-		db $30,$80
-		db $30,$90
-		db $30,$a0 
-		db $30,$b0
-		db $f0,$c0
-		db $00,$00 ;end
-
-happymusic:	db $15,$c0 ;each note is first byte duration
-		db $16,$b0 ;then next byte frequency -- the higher the second byte, the lower the frequency
-		db $17,$a0 
-		db $18,$90 
-		db $19,$80
-		db $20,$70
-		db $20,$60
-		db $80,$50 
-		db $40,$00 ;rest
-		db $00,$00 ;end
+; tones_vram:	db	$30,$60
+; 		db	$10,$90 ;each note is first byte duration
+; 		db	$20,$40 ;then next byte frequency -- the higher the second byte, the lower the frequency
+; 		db	$10,$90
+; 		db	$20,$40
+; 		db	$30,$60
+; 		;	db $30,$50
+; 		;	db $f0,$c0
+; 		db	$60,$00 ;rest
+; 		db	$00,$00 ;end
 
 
-bitgoodnotes:	db $40,$60, $FF,$30
-		db $10,$00 ;rest
-		db $00,$00 ;end
+; tones_sad:	db	$30,$50 ;each note is first byte duration
+; 		db	$30,$60 ;then next byte frequency -- the higher the second byte, the lower the frequency
+; 		db	$30,$70
+; 		db	$30,$80
+; 		db	$30,$90
+; 		db	$30,$a0 
+; 		db	$30,$b0
+; 		db	$f0,$c0
+; 		db	$00,$00 ;end
 
-bitbadnotes:	db $40,$60, $44,$C0
-		db $10,$00 ;rest
-		db $00,$00 ;end
+tones_vramgood:	db	$03,$c0 ;each note is first byte duration
+		db	$03,$b0 ;then next byte frequency -- the higher the second byte, the lower the frequency
+		db	$04,$a0 
+		db	$04,$90 
+		db	$04,$80
+		db	$05,$70
+		db	$05,$60
+		db	$40,$50 
+		;	db $40,$00 ;rest
+		db	$00,$00 ;end
 
-bytegoodnotes:	db $FF,$60
-		db $FF,$30
-		db $00,$00 ;end
 
-bytebadnotes:	db $FF,$60
-		db $44,$C0
-		db $80,$00 ;rest
-		db $00,$00 ;end
+tones_bitgood:	db	$40,$30
+		db	$20,$00 ;rest
+		db	$00,$00 ;end
+
+tones_bitbad:	db	$10,$C0
+		db	$20,$00 ;rest
+		db	$00,$00 ;end
+
+tones_bytegood:	db	$FF,$30
+		db	$00,$00 ;end
+
+tones_bytebad:	db	$44,$C0
+		db	$80,$00 ;rest
+		db	$00,$00 ;end
+
+tones_id1:	db	$40,$60
+		db	$60,$00 ;rest
+		db	$00,$00 ;end
+
+tones_id2:	db	$40,$60
+		db	$10,$00 ;rest
+		db	$40,$60
+		db	$60,$00 ;rest
+		db	$00,$00 ;end
+
+tones_id3:	db	$40,$60
+		db	$10,$00 ;rest
+		db	$40,$60
+		db	$10,$00 ;rest
+		db	$40,$60
+		db	$60,$00 ;rest
+		db	$00,$00 ;end

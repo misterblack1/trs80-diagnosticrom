@@ -32,8 +32,6 @@ memtestmarch:
 		jr nz,mtm1loop			; not $FF, keep going
 		cp c
 		jr nz,mtm1loop			; not $FF, keep going
-		; cpi
-		; jp pe, mtm1loop
 	mtm2:					; read value, write complement upwards
 		link_loadregs
 	mtm2loop:
@@ -56,8 +54,6 @@ memtestmarch:
 		jr nz,mtm2loop			; not $FF, keep going
 		cp c
 		jr nz,mtm2loop			; not $FF, keep going
-		; cpi
-		; jp pe,mtm2loop			; repeat for all testing area
 		
 	mtm3:					; read complement, write original value upwards
 		link_loadregs
@@ -82,8 +78,6 @@ memtestmarch:
 		jr nz,mtm3loop			; not $FF, keep going
 		cp c
 		jr nz,mtm3loop			; not $FF, keep going
-		; cpi
-		; jp pe, mtm3loop
 		jr mtm4
 	
 	mtm_done_bounce:
@@ -115,8 +109,6 @@ memtestmarch:
 		jr nz,mtm4loop			; not $FF, keep going
 		cp c
 		jr nz,mtm4loop			; not $FF, keep going
-		; cpd
-		; jp pe, mtm4loop
 
 	mtm5:					; read complement, write value downwards
 		link_loadregs
@@ -142,8 +134,6 @@ memtestmarch:
 		jr nz,mtm5loop			; not $FF, keep going
 		cp c
 		jr nz,mtm5loop			; not $FF, keep going
-		; cpd
-		; jp pe, mtm5loop
 	
 	mtm6:					; final check that all are zero
 		link_loadregs
@@ -167,8 +157,6 @@ memtestmarch:
 		jr nz,mtm6loop			; not $FF, keep going
 		cp c
 		jr nz,mtm6loop			; not $FF, keep going
-		; cpd
-		; jp pe,mtm6loop
 
 	mtmredo:
 		ld a,d	

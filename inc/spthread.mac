@@ -1,3 +1,6 @@
+; Start a threaded-code section by pointing to it with SP and issuing RET
+; immediately following this macro should be the addresses (and optionally,
+; parameters) for the threaded code
 spthread_begin .macro
 	local stackstart
 		ld sp,.`stackstart
@@ -5,16 +8,19 @@ spthread_begin .macro
 	.`stackstart:
 .endm
 
+; At the end of the threaded code section, place an address just beyond
+; the list of addresses, to jump back to conventional code
 spthread_end .macro
 		dw $+2
 .endm
 
-; spthread_enter_iy .macro
-; 		ld	iy,0		; copy old sp to iy
-; 		add	iy,sp
-; 		spthread_begin
-; .endm
-
+; Save the stack pointer into the stack registers.  This is analogous
+; to pushing SP onto the (simulated) stack.  The shadow registers hold
+; two copies of SP, and effectively become a 2-element stack.  This means
+; that there can be up to two threaded code stack frames saved.  The
+; innermost threaded stack frame can call a third-level machine-code
+; subroutine, but that subroutine can't make any further calls or run
+; threaded code itself.
 spthread_save .macro
 		exx
 		ld	d,h
@@ -24,11 +30,8 @@ spthread_save .macro
 		exx
 .endm
 
-spthread_enter .macro
-		spthread_save
-		spthread_begin
-.endm
-
+; The opposite of spthread_save.  Pops SP off the simulated stack in
+; preparation for returning to the enclosing threaded stack frame.
 spthread_restore .macro
 		exx
 		ld	sp,hl		; resume from the thread location saved in hl'
@@ -37,35 +40,18 @@ spthread_restore .macro
 		exx
 .endm
 
+; The prologue for a subroutine that contains threaded code.
+spthread_enter .macro
+		spthread_save
+		spthread_begin
+.endm
+
+; The epilogue for a subroutine that contains threaded code.  To be followed by RET
 spthread_leave .macro
 		spthread_end
 		spthread_restore
 .endm
 
-; spt_con_offset .macro row,col
-; 	dw VBASE+(row*VLINE)+col
-; .endm
-
 spt_con_offset .macro row,col
-	dw VBASE+(row*VLINE)+col
+		dw VBASE+(row*VLINE)+col
 .endm
-
-
-; spt_link .macro reg,ramstack,proc
-; 		ld 	reg,0		; copy sp to iy
-; 		add	reg,sp
-; 		ld	sp,ramstack
-; 		call	proc
-; .endm
-
-; spt_call .macro reg,newthread
-; 		ld	reg,0
-; 		add	reg,sp
-; 		ld sp,newthread
-; 		ret
-; .endm
-
-; spt_unwind .macro reg
-; 		ld	sp,reg
-; .endm
-
