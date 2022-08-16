@@ -24,17 +24,16 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 ## Feature List
 
+- No working RAM is needed.  This ROM can work on a machine with faults in both VRAM and DRAM.  For more information, see [this explanation of the techniques used to operate in the absence of working RAM](spt.md).
+	- Keep in mind however, that other faults, such as address line problems, can keep this (or any) ROM from running properly.
 - One ROM image for both Model 1 and 3 and all DRAM sizes
 - Audio feedback via the cassette port, so you can tell what's happening even if you have no video display
-- Testing the VRAM using a march test, then Using the VRAM as the stack so the ROM can fully work without any DRAM installed in the system *1
-- Auto detection of VRAM type (The Model 1 comes with 7-bit VRAM as stock, so it cannot be used as a stack)
-- Auto detection of bank size (4k or 16k) *2
-- Testing up to 48k of DRAM, looping continually 
+- Auto detection of VRAM type (The Model 1 comes with 7-bit VRAM)
+- Auto detection of bank size (4k or 16k)
+	- A machine with 4K bank size cannot have RAM at 12K ($7000).  If the ROM tests that region and finds all bits bad, it assumes this is a 4K machine.
+	- Officially, a machine with a 4K bank can only have 4K total, so this ROM does not test beyond the first bank in that case.
+- Testing up to 48k of DRAM, looping continually
 - Fits within 2K so the ROM can be used on a Level 1 machine
-
-*1: The stack can only be used if all 8 bits of VRAM are available and working. If there is a VRAM fault, the system will make a tone and halt. If there is only 7-bit of VRAM (stock Model 1) the RAM test will test and use the first bank of DRAM for the stack. 
-
-*2: If the ROM detects 4K bank size, it will only test the first 4K of DRAM, because a TRS-80 Model 1 or 3 with a 4K memory bank can have only one such bank for a maxiumum of 4K of DRAM. When the ROM detects a 16K bank, it will attempt to test all 3 banks oF DRAM, even if only 1 is installed.  The additional banks will show on the screen with all bits in error.
 
 
 ## Future improvements
@@ -47,20 +46,15 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 - Makes a beep from the cassette port (so you can know the system is executing the ROM.)
 - Set the system to 64 column mode.
-- Tests the video RAM using a stackless march test. (No DRAM is needed!)
-- If the VRAM has all working bits except bit 6 (which is normally is missing on stock Model 1) then the test assumes the system is a Model 1.
-- Beeps a good or bad VRAM sound. If the VRAM is bad, it will beep out which bit(s) are bad, show a test pattern on the screen, and halt.
-- If all of the VRAM tests 8-bit clean:
-	- Sets the stack pointer to the end of VRAM
-- If system is 7-bit Model 1:
-	- Test DRAM bank 1. If that passes, it will set the stack pointer to this first bank.
+- Tests the video RAM using a March C test.
+- If all bits of the VRAM are working except bit 6 (which is normally missing on the stock TRS-80 Model 1) then the test assumes the system is a Model 1.
+- Beeps a good (rising tones) or bad (tune ending on low note) VRAM sound. If the VRAM is bad, it will beep out which bit(s) are bad, show a test pattern on the screen, and halt.
 - Clears screen and writes a welcome message.
 - If the first bank of DRAM only has 4K:
 	- Tests that first bank of 4k repeatedly.
 - If the first bank of DRAM 16k:
-	- Tests all three DRAM banks (48K) repeatedly.
+	- Tests all three DRAM banks (48K) repeatedly.  Missing banks (e.g., for a 16K or 32K machine) will be listed with all bits in error (`76543210`).
 - After each test, the diagnostic will play a good bank or bad bank tune. If a bad bank exists, it will beep out which bits are bad and print this to screen.
-- The RAM test will run continually.  If the stack is in DRAM and the first bank is found to have an error, the machine will print a message, make a failure sound, and stop testing.  Although testing a bank of memory can be done without relying on RAM or a stack, printing certain messages requires using the stack.  So if the ROM decides the stack can't be trusted, it will sound and print a simple message and halt the machine.
 
 # Running this diagnostic ROM on a TRS-80 Model 1 or Model 3
 
@@ -68,28 +62,36 @@ To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an ad
 
 [PCBway Project Link for EPROM adapter](https://www.pcbway.com/project/shareproject/Adapter_2364___27128__by_Bobbel_.html)
 
-The assembled ROM, ready to be burned to EPROM or EEPROM, is `trs80testrom.bin` or `trs80testrom.hex`.
+The assembled ROM, ready to be burned to EPROM or EEPROM, is `trs80testrom.bin` or `trs80testrom.hex`.  Both contain the same ROM image, so you can use whichever is more convenient with your EPROM programmer's software.
 
-One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up. (Address `$0000`)
+One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up.  (Address `$0000`)
   
-On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. (Unconfirmed and untested.) I used my 2364 to 2764 adapter in this socket and it mostly worked, except I had to write the ROM into the second top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model 1.)
+On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. _(Unconfirmed and untested.)_ Adrian used his 2364 to 2764 adapter in this socket and it mostly worked aftert he wrote the ROM into the top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model 1.)
   
-- The ROM detects if the machine is a 7-bit VRAM Model 1 by testing the VRAM. If bit 6 (data line 6) comes back as bad, it assumes it's a model 1 (or more precisely, it assumes the display works but VRAM can't be used to store 8-bit data, only the upper-case character set).
-- If you have a Model 3 or a 8-bit VRAM Model 1 (this is also known as the lower-case mode, where one extra VRAM chip is added in) the Diagnostic screen will report that it is using the VRAM for the CPU stack. If you are on a Model 3 or 8-bit VRAM Model 1 and the ROM says it is using DRAM for the stack, **then bit 6 of the VRAM has a problem** which you will need to repair.
 - The beep codes for bit errors are as follows:
-	- Short middle then high tone: this bit is good.
-	- Short middle then low tone: this bit is bad.
-	- Long middle then high tone: all bits in this bank are good.
-	- Long middle then low tone: all bits in this bank are bad.
-- When bad bits are detected in VRAM or DRAM, you will hear a beep code telling you which bit is bad. The beeping starts at Bit 7 (MSB) anc counts down to Bit 0 (LSB.) So if you hear, HI HI HI lo HI HI HI HI, then the bad bit is BIT 4 (of 7). If _only_ bit 6 of VRAM is bad, you will not hear a beep code because the ROM assumes that it is a Model 1 machine. (See above.)
-- 4K DRAM machines can only ever have 4K of RAM, so only the first 4K of ram is tested and no more.
-- On the Model 3, you **must** have a working connection on JP2A and JP2B to run this diagnostic. Both the cassette port (for audio output) but more importantly the video subsystem is across this interconnect. Bits 0 and 1 of this interconnection are required for the cassette port audio, but all 8 bits are needed for video to work. 
+	- First a long middle tone is played:
+		- A single tone for the first bank, two for the second, and three for the third
+	- Then after a short pause, the good/bad bits are identified:
+		- If all bits are good, a long high tone is played.
+		- If all bits are **bad**, a long **low** tone is played.
+		- If some bits are good and some bad, the bits are identified starting with bit 7 and counting down to bit 0:
+			- A short high tone indicates this bit is good.
+			- A short **low** tone indicates this bit is bad.
+- For example, if your second 16K bank (locations `$8000-$BFFF`) have bits 5 and 3 bad, the following tones will play:
+	- MID(long) MID(long) (pause) HI HI **low** HI **low** HI HI HI
+When bad bits are detected in VRAM or DRAM, you will hear a beep code telling you which bit is bad. The beeping starts at Bit 7 (MSB) anc counts down to Bit 0 (LSB.) So if you hear, HI HI HI lo HI HI HI HI, then the bad bit is BIT 4 (of 7). If _only_ bit 6 of VRAM is bad, you will not hear a beep code because the ROM assumes that it is a Model 1 machine. (See above.)
+
+## Other troubleshooting notes
+
+- On the Model 3, you **must** have a working connection between JP2A and JP2B to run this diagnostic. Both the cassette port (for audio output) and the video subsystem is accessed by the CPU via this interconnect. Bits 0 and 1 of this interconnection are needed for the cassette port audio, but all 8 bits are required for video to work. 
 - On the Model 3, the cassette port output is the pin closest to the keyboard connector (Connector J3). On the Model 1, you can either clip a test lead onto the cassette port, or use the cassette DIN cable to get audio output. 
-- You do not need any DRAM installed in the machine for the diagnostic to run. If you have good working VRAM but no working DRAM, you should see it trying to test the DRAM, but all banks will come back as bad. Keep in mind a stuck or bad DRAM bus transceiver can trash the entire bus, causing the VRAM test to also fail.
+- You do not need any DRAM installed in the machine for the diagnostic to run. If you have good working VRAM but no working DRAM, you should see the DRAM tests run, and all banks will come back as bad. 
+- Keep in mind a stuck or bad DRAM bus transceiver can trash the entire bus, causing the VRAM test to also fail.
 - You do not need the keyboard connected for the system to run the diagnostic. The keyboard is not used during the test at all.
-- The diagnostic ROM **must** be installed into U104 on the TRS-80 Model 3. You must use a 2364 to 27XXX adapter. The one I used is made for 27128, but it works just fine with 2764 and more importantly 28B64C (EEPROMs.) You can also use this same adapter in U105 (for testing replacement of that ROM.) You can use a normal 2716 in U106 if you need to test replacing that ROM.
-- You do not need to have any ROM installed in U105 or U106 during the test. A bad ROM in one of those sockets could cause the computer to not work, but nothing is read from the other ROM chips.
-- You do not need the interconnect between JP1A and JP1B. This is only to connect the floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
+- The diagnostic ROM **must** be installed into U104 on the TRS-80 Model 3. You must use a 2364 to 27XXX adapter. The one Adrian used is made for 27128 devices, but it works just fine with 2764 and more conveniently 28B64C (EEPROMs.) 
+- You can also use this same adapter in U105 (for testing replacement of that ROM, **not** for running this diagnostic ROM). You can use a normal 2716 in U106 if you need to test replacing that ROM.
+- You do not need to have any ROM installed in U105 or U106 during the test, as they are not used by the diagnostics. A bad ROM in one of those sockets could cause the computer to not work, so if even this diagnostic ROM does not work, it would be advisable to try pulling those ROMs.
+- You do not need the interconnect between JP1A and JP1B. This use used by onlythe floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
 
 ## Knowing what might be wrong
 
