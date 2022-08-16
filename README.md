@@ -1,6 +1,6 @@
 # TRS-80 Diagnostic ROM
 
-![Normal Operation](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Normal%20Operation%2016K%20Model%203.jpg?raw=true)
+![Normal Operation](documentation/M3_animated.gif)
 
 #### Main contributors:
 - Dave Giller KI3V - Programmer and designer
