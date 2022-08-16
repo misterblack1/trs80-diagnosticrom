@@ -1,3 +1,20 @@
+; macros for placing interrupt vectors in the middle of a block of threaded code
+spt_skip_intvec .macro
+		dw spt_jp, .intvec_continue			; continue after the NMI vector
+		place_intvec
+		ld	sp,0
+		reti
+	.intvec_continue:
+.endm
+
+spt_skip_nmivec .macro
+		dw spt_jp, .nmivec_continue			; continue after the NMI vector
+		place_nmivec
+		ld	sp,0					; on model 1, NMI is connected to reset button
+		retn
+	.nmivec_continue:
+.endm
+
 ; Start a threaded-code section by pointing to it with SP and issuing RET
 ; immediately following this macro should be the addresses (and optionally,
 ; parameters) for the threaded code

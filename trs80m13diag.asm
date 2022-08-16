@@ -1,6 +1,14 @@
 ; code: language=z80-asm tabSize=8
 
+; configuration defines:
+; Whether to continue to DRAM testing after finding VRAM error.  This can be used
+; to work on DRAM if you know the VRAM is bad, but you don't have replacement chips
+; on hand and want to test DRAM chips too.  By default the released builds stop 
+; if there is a VRAM error and try to display a character test pattern on the screen.
 CONTINUE_ON_VRAM_ERROR = 0
+
+; For debugging in an emulator, you can choose a page number to simulate a bit error
+; while testing.
 SIMULATE_ERROR = 0
 ; SIMULATE_ERROR = $80
 ; SIMULATE_ERROR = $3C
@@ -12,25 +20,23 @@ SIMULATE_ERROR = 0
 ;
 ; This ROM doesn't work like typical Z80 code, which assumes the presence of a stack.
 ; There may in fact be no working memory in the machine for holding the stack.
-; So for much of this code, it must be assumed not only that there is no stack, but
-; that certain registers must be carefully preserved.  And without a stack, that means
-; either saving them to other registers and restoring before jumping to other code
-; (remembering there can be no CALL instructions when there is no stack) 
-; or avoiding their use altogether.  When there's no RAM and no stack, the registers
-; are the ONLY place to store information, which is why some of this code is structured
-; oddly.
 ;
-; Assembly purists will shudder at the extensive use of macros.
+; An overall goal for this version of the code is to run in the absence of any working
+; ram at all.  There is no stack and no RAM variables.  The only storage of variables
+; is in registers, so the registers must be carefully preserved.
+;
+; Without a stack, that means either saving them to other registers and restoring before 
+; jumping to other code (remembering there can be no CALLs when there is no stack) 
+; or avoiding their use altogether.  These are extremely confining restrictions.
+;
+; Assembly purists will shudder at the extensive use of macros, but for sanity it
+; cannot be avoided.
 ;
 ; Globally, the contents of these registers must be preserved
 ;	e = bit errors in the region of memory currently being tested
 ;	ix = current location in VRAM for printing messages
+;	iy = current table entry for test parameters
 ;
-; Additionally, these registers must be preserved in SOME areas of the code, at least
-; while there is no stack:
-;	iy = return address for current non-stack "subroutine".  See iycall macro.
-
-; SILENCE++
 
 VBASE  equ 3c00h
 VSIZE  equ 0400h
@@ -40,7 +46,7 @@ VREPEAT equ 2
 VSTACK equ VBASE+VSIZE
 
 
-		.org 0000h
+		.org 0000h				; z80 boot code starts at location 0
 reset:
 		di					; mask INT
 		im	1
@@ -58,6 +64,7 @@ test_vram:
 
 		dw spt_ld_iy, tp_vram
 		dw memtestmarch				; test the VRAM
+
 .if SIMULATE_ERROR
 		dw spt_simulate_error
 .endif
@@ -107,7 +114,7 @@ test_vram:
 		dw spt_con_print, msg_charset		; show a copy of the character set
 
 if CONTINUE_ON_VRAM_ERROR
-place_nmivec
+spt_skip_nmivec
 endif
 		dw con_NL
 		dw spt_charset_here
@@ -118,7 +125,7 @@ endif
 		dw spt_announcetest 			; announce what test we are about to run
 
 if ! CONTINUE_ON_VRAM_ERROR
-place_nmivec
+spt_skip_nmivec
 endif
 
 		dw memtestmarch				; check for 4k vs 16k

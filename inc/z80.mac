@@ -11,18 +11,32 @@ dbz .macro string
 ; interrupt vectors: these need to be located at 38h and 66h, so there is little
 ; code space before them.  They should probably be present so that any incoming interrupts
 ; won't kill the test routines.  The INT vector is probably unnecessary but the NMI should
-; be present. Put the main program after them; we've got 8k to work with for the main ROM.
+; be present.
 
-;		.assert $ <= $38
-; 		dc 0038h-$,0ffh				; fill empty space
-; 		org 0038h				; INT vector
-; intvec: reti
+; to maximize space, 
+
+place_intvec .macro
+		.assert $ <= $38
+		dc 	$38-$,$FF				; fill empty space
+		org 	$38					; NMI vector
+.endm
 
 place_nmivec .macro
-		dw spt_jp, .nmivec_continue		; continue after the NMI vector
 		.assert $ <= $66
-		dc 0066h-$,0ffh				; fill empty space
-		org 0066h				; NMI vector
+		dc 	$66-$,$FF				; fill empty space
+		org 	$66					; NMI vector
+.endm
+
+skip_intvec .macro
+		jr	.intvec_continue			; continue after the NMI vector
+		place_intvec
+		reti
+	.intvec_continue:
+.endm
+
+skip_nmivec .macro
+		jr	.nmivec_continue			; continue after the NMI vector
+		place_nmivec
 		retn
 	.nmivec_continue:
 .endm
