@@ -116,8 +116,7 @@ Using this knowlege, I created a set of macros to form the function prologue and
  .prologue
  	exx			; prologue: push SP, (threaded IP),
 				; onto the emulated stack
- 	ld	d,h		; copy hl' to de'
- 	ld	e,l
+ 	ex	de,hl		; copy hl' to de'
  	ld	hl,0		; copy sp to hl'
  	add	hl,sp
  	exx
@@ -131,8 +130,7 @@ Using this knowlege, I created a set of macros to form the function prologue and
 .threadend
  	exx			; epilogue: pop the previous SP off the emulated stack
  	ld	sp,hl		; resume from the thread location saved in hl'
- 	ld	h,d		; copy de' to hl'
- 	ld	l,e
+ 	ex	de,hl		; copy de' to hl'
  	exx
 	ret
 ```
