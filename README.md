@@ -99,6 +99,14 @@ When bad bits are detected in VRAM or DRAM, you will hear a beep code telling yo
 
 The Model 3 motherboard layout is shown above. I recommend referring to the Radio Shack Technical Service Manual for help in identifying what components might be bad on your system, but the picture should give you a head-start.
 
+![Model 1 Motherboard](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%201%20DRAM%20and%20VRAM.png?raw=true)
+
+The Model 1 motherboard has only 1 bank of DRAM, which can 4k or 16k. If the system has 16k, then an additional 32k can be installed in an attached expansion interface.
+
+![Model 1 ROM location](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%201%20Level%20II%20ROM%20location.png?raw=true)
+
+In almost all Model 1 machines, they will have the Level II ROM expansion installed, which adds another small PCB on the front side connected via ribbon cable. You must install the ROM in the left-most socket, using the 2364 adapter as was used in the Model 3. Because the ROM in the Model 1 is typically a 2332 and the extra address line is often tied high, you must load the diagnostic ROM image into the EPROM in the upper half. 
+
 ## Building
 
 This repository will contain the assembled ROM image.  To assemble, you will need to use [George Phillips' `zmac` assembler](http://48k.ca/zmac.html).  
