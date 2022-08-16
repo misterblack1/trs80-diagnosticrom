@@ -19,10 +19,10 @@ spt_skip_nmivec .macro
 ; immediately following this macro should be the addresses (and optionally,
 ; parameters) for the threaded code
 spthread_begin .macro
-	.local stackstart
-		ld sp,.`stackstart
+	.local threadstart
+		ld sp,.`threadstart
 		ret
-	.`stackstart:
+	.`threadstart:
 .endm
 
 ; At the end of the threaded code section, place an address just beyond
