@@ -2,7 +2,7 @@
 ; immediately following this macro should be the addresses (and optionally,
 ; parameters) for the threaded code
 spthread_begin .macro
-	local stackstart
+	.local stackstart
 		ld sp,.`stackstart
 		ret
 	.`stackstart:

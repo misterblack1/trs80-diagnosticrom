@@ -1,12 +1,12 @@
 ; code: language=z80-asm tabSize=8
 
-CONTINUE_ON_VRAM_ERROR = 1
+CONTINUE_ON_VRAM_ERROR = 0
 SIMULATE_ERROR = 0
 ; SIMULATE_ERROR = $80
 ; SIMULATE_ERROR = $3C
 
-.include "inc/trs80diag.mac"
-.include "inc/spthread.mac"
+.include "inc/z80.mac"
+.include "inc/spt.mac"
 
 ; Notes on global register allocation:
 ;
@@ -106,25 +106,9 @@ test_vram:
 			spt_con_offset 9,24
 		dw spt_con_print, msg_charset		; show a copy of the character set
 
-
-		dw spt_jp, thread_ramtest		; continue after the NMI vector
-
-; interrupt vectors: these need to be located at 38h and 66h, so there is little
-; code space before them.  They should probably be present so that any incoming interrupts
-; won't kill the test routines.  The INT vector is probably unnecessary but the NMI should
-; be present. Put the main program after them; we've got 8k to work with for the main ROM.
-
-;		.assert $ <= $38
-; 		dc 0038h-$,0ffh				; fill empty space
-; 		org 0038h				; INT vector
-; intvec: reti
-
-		.assert $ <= $66
-		dc 0066h-$,0ffh				; fill empty space
-		org 0066h				; NMI vector
-nmivec: retn
-
-	thread_ramtest:
+if CONTINUE_ON_VRAM_ERROR
+place_nmivec
+endif
 		dw con_NL
 		dw spt_charset_here
 
@@ -132,6 +116,10 @@ nmivec: retn
 			spt_con_offset 3,0
 		dw spt_ld_iy, tp_bank
 		dw spt_announcetest 			; announce what test we are about to run
+
+if ! CONTINUE_ON_VRAM_ERROR
+place_nmivec
+endif
 
 		dw memtestmarch				; check for 4k vs 16k
 
@@ -362,11 +350,10 @@ do_charset:
 		ret
 
 
-; include "inc/memtest-rnd.asm"
-include "inc/spthread.asm"
-include "inc/memtest-march-spt.asm"
-include "inc/trs80con-spt.asm"
-include "inc/trs80music-spt.asm"
+include "inc/spt.asm"
+include "inc/memtestmarch.asm"
+include "inc/trs80con.asm"
+include "inc/trs80music.asm"
 
 label_vram:	dbz " 1K VRAM 3C00-3FFF "
 label_dram4k:	dbz " 4K DRAM 4000-4FFF "
