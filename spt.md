@@ -96,9 +96,9 @@ proc3:	; do something without arguments
 
 For lack of a more creative term, I call this "Stack Pointer Threading", or SPT.  This is not an invention of mine, just an implementation of the method Jens described.  The trick is to remember that the `SP` register serves the purpose of the instruction pointer, for the threaded code addresses.
 
-(For attempted clarity, I will use the term "instruction pointer" to refer to threaded code, to distinguis between that and the Z80's `PC` register.)
+(For attempted clarity, I will use the term "instruction pointer" to refer to threaded code, to distinguish between that and the Z80's `PC` register.)
 
-The "interpreter" consists of two instructions: `RET` calls the next threaded operation, and `POP` fetches a parameter from the instruction stream.  It's just two Z80 instructions.  There is no interpreter subroutine.
+The "interpreter" consists of just two instructions: `RET` calls the next threaded operation, and `POP` fetches a parameter from the instruction stream.  It's just two Z80 instructions.  There is no need for an interpreter subroutine.
 
 Now we have code that 'calls' subroutines &mdash; limited to one level deep, and with only fixed arguments passed on the stack.  Still, they feel almost like regular subroutines, save for the fact that `POP` instructions are not balanced with `PUSH` instructions anywhere else.
 
