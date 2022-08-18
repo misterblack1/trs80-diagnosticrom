@@ -6,7 +6,7 @@ Writing any non-trivial program on a Z80 to operate without using RAM is an extr
 - You cannot use the `CALL` or `RET` instructions in any conventional sense
 - You cannot store variables to the stack using `PUSH`, or move data between registers with `PUSH` and `POP`
 - You can only keep track of as much variable information as will fit in the registers
-	- ... and some of those registers, especially `A`, will be needed
+	- ... and some of those registers, especially `A`, will be consumed by just about any operation or computation at all
 - Moving data between registers is hampered by the fact that some pathways generally use RAM as an intermediate location
 
 I by no means an expert at Z80 assembly language; this project is my first Z80 program.  I did not invent the techniques used in this program, although I have not seen them combined in exactly this form elsewhere.  This was a learning experience for me, and this document aims to help others who are starting from a similar level of experience to mine learn some of the lessons I did.
