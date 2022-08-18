@@ -148,7 +148,7 @@ It's worth saying this here: this is extremely slow compared to native Z80 `CALL
 
 There are a handful of refinements such as the ability to jump to a copy of the epliogue (not the prologue), and even returning to the previous threaded 'stack' frame from within a primitive operation, but the useful portions of the method are described here.
 
-I doubt that I am the first to use this method, and I doubt that I have implemented it in the optimal way.  I would be very interested to hear suggestions for improving this technique.  Please submit an "Issue" with your suggestion so that we can get in contact.
+I doubt that I am the first to use this method, and I doubt that I have implemented it in the optimal way.  I would be very interested to hear suggestions for improving this technique.  Please submit a "Issue" or start a "Discussion" on the main Github page for this project with any suggestions or thoughts you may have.
 
 ## _Virtual Machine_ revisited
 
