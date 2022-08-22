@@ -66,7 +66,7 @@ The assembled ROM, ready to be burned to EPROM or EEPROM, is `trs80testrom.bin` 
 
 One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up.  (Address `$0000`)
   
-On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. _(Unconfirmed and untested.)_ Adrian used his 2364 to 2764 adapter in this socket and it mostly worked aftert he wrote the ROM into the top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model 1.)
+On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. _(Unconfirmed and untested.)_ Adrian used his 2364 to 2764 adapter in this socket and it mostly worked after he wrote the ROM into the top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model 1.)
   
 - The beep codes for bit errors are as follows:
 	- First a long middle tone is played:
@@ -79,7 +79,7 @@ On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left mos
 			- A short **low** tone indicates this bit is bad.
 - For example, if your second 16K bank (locations `$8000-$BFFF`) have bits 5 and 3 bad, the following tones will play:
 	- MID(long) MID(long) (pause) HI HI **low** HI **low** HI HI HI
-When bad bits are detected in VRAM or DRAM, you will hear a beep code telling you which bit is bad. The beeping starts at Bit 7 (MSB) anc counts down to Bit 0 (LSB.) So if you hear, HI HI HI lo HI HI HI HI, then the bad bit is BIT 4 (of 7). If _only_ bit 6 of VRAM is bad, you will not hear a beep code because the ROM assumes that it is a Model 1 machine. (See above.)
+When bad bits are detected in VRAM or DRAM, you will hear a beep code telling you which bit is bad. The beeping starts at Bit 7 (MSB) and counts down to Bit 0 (LSB.) So if you hear, HI HI HI low HI HI HI HI, then the bad bit is BIT 4 (of 7). If _only_ bit 6 of VRAM is bad, you will not hear a beep code because the ROM assumes that it is a Model 1 machine. (See above.)
 
 ## Other troubleshooting notes
 
@@ -91,7 +91,7 @@ When bad bits are detected in VRAM or DRAM, you will hear a beep code telling yo
 - The diagnostic ROM **must** be installed into U104 on the TRS-80 Model 3. You must use a 2364 to 27XXX adapter. The one Adrian used is made for 27128 devices, but it works just fine with 2764 and more conveniently 28B64C (EEPROMs.) 
 - You can also use this same adapter in U105 (for testing replacement of that ROM, **not** for running this diagnostic ROM). You can use a normal 2716 in U106 if you need to test replacing that ROM.
 - You do not need to have any ROM installed in U105 or U106 during the test, as they are not used by the diagnostics. A bad ROM in one of those sockets could cause the computer to not work, so if even this diagnostic ROM does not work, it would be advisable to try pulling those ROMs.
-- You do not need the interconnect between JP1A and JP1B. This use used by onlythe floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
+- You do not need the interconnect between JP1A and JP1B. This use used by only the floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
 
 ## Knowing what might be wrong
 
