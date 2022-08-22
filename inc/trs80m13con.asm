@@ -18,19 +18,14 @@ con_home:	ld ix,VBASE
 spt_con_goto:	pop ix
 		ret
 
-mac_con_NL .macro
-	.local skip
+con_NL:
 		ld a,ixl		; go to beginning of line
 		and $c0			; then go to the next line
 		add a,$40
 		ld ixl,a		; store the low byte back
-		jr nc,.`skip
+		jr nc,.skip
 		inc ixh			; fix up high byte if there was a carry
-	.`skip:
-.endm
-
-con_NL:
-		mac_con_NL
+	.skip:
 		ret
 
 con_clear:

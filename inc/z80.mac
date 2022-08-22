@@ -1,3 +1,5 @@
+; code: lang=asm-collection tabSize=8
+
 JP_ERROR defl 0
 JR_PROMOTE defl 0
 
@@ -15,28 +17,28 @@ dbz .macro string
 
 ; to maximize space, 
 
-place_intvec .macro
+PLACE_INTVEC .macro
 		.assert $ <= $38
 		dc 	$38-$,$FF				; fill empty space
 		org 	$38					; NMI vector
 .endm
 
-place_nmivec .macro
+PLACE_NMIVEC .macro
 		.assert $ <= $66
 		dc 	$66-$,$FF				; fill empty space
 		org 	$66					; NMI vector
 .endm
 
-skip_intvec .macro
+SKIP_INTVEC .macro
 		jr	.intvec_continue			; continue after the NMI vector
-		place_intvec
+		PLACE_INTVEC
 		reti
 	.intvec_continue:
 .endm
 
-skip_nmivec .macro
+SKIP_NMIVEC .macro
 		jr	.nmivec_continue			; continue after the NMI vector
-		place_nmivec
+		PLACE_NMIVEC
 		retn
 	.nmivec_continue:
 .endm

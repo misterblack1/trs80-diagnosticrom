@@ -41,9 +41,6 @@ SIMULATE_ERROR = 0
 VBASE  equ 3c00h
 VSIZE  equ 0400h
 VLINE  equ 64
-VREPEAT equ 2
-
-VSTACK equ VBASE+VSIZE
 
 
 		.org 0000h				; z80 boot code starts at location 0
@@ -58,11 +55,11 @@ diagnostics:
 		out	($F8),a				; blank printer port for now
 
 test_vram:
-		spthread_begin				; set up to begin running threaded code
+		SPTHREAD_BEGIN				; set up to begin running threaded code
 
 		dw spt_playmusic, tones_welcome
 
-		dw spt_ld_iy, tp_vram
+		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
 
 .if SIMULATE_ERROR
@@ -84,7 +81,7 @@ test_vram:
 		dw con_clear
 		dw spt_con_print, msg_banner		; print the banner
 
-		dw spt_ld_iy, tp_vram
+		dw spt_select_test, tp_vram
 		dw spt_announcetest 			; print results of VRAM tst
 
 		dw spt_jp_e_7bit_vram, .vram_7bit
@@ -110,35 +107,35 @@ test_vram:
 
 	.vram_continue:
 		dw spt_con_goto
-			spt_con_offset 9,24
+			MAC_SPT_CON_OFFSET 9,24
 		dw spt_con_print, msg_charset		; show a copy of the character set
 
 if CONTINUE_ON_VRAM_ERROR
-spt_skip_nmivec
+SPT_SKIP_NMIVEC
 endif
 		dw con_NL
 		dw spt_charset_here
 
 		dw spt_con_goto
-			spt_con_offset 3,0
-		dw spt_ld_iy, tp_bank
-		dw spt_announcetest 			; announce what test we are about to run
+			MAC_SPT_CON_OFFSET 3,0
+		dw spt_select_test, tp_bank
 
 if ! CONTINUE_ON_VRAM_ERROR
-spt_skip_nmivec
+SPT_SKIP_NMIVEC
 endif
 
+		dw spt_announcetest 			; announce what test we are about to run
 		dw memtestmarch				; check for 4k vs 16k
 
 		dw spt_jp_all_bits_bad, .banks_4k
 
-		dw spt_ld_iy, tp_16k			; load the first test
+		dw spt_select_test, tp_16k			; load the first test
 		dw spt_jp, .start
 	.banks_4k:
-		dw spt_ld_iy, tp_4k			; load the first test
+		dw spt_select_test, tp_4k			; load the first test
 
 	.start	dw spt_con_goto
-			spt_con_offset 3,0
+			MAC_SPT_CON_OFFSET 3,0
 
 	.loop:	dw spt_announcetest 			; announce what test we are about to run
 		dw memtestmarch				; test the current bank
@@ -243,7 +240,7 @@ spt_next_test:	pop	hl				; get the address to jump to if we are starting over
 
 spt_announcetest:
 		; pop	hl				; get the message to be printed
-		spthread_enter
+		SPTHREAD_ENTER
 
 		dw con_NL
 		dw spt_ld_hl_tp_label
@@ -254,13 +251,13 @@ spt_announcetest:
 
 
 spt_play_testresult:
-		spthread_save				; save the stack pointer
+		SPTHREAD_SAVE				; save the stack pointer
 
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw spt_ld_hl_tp_notes			; play the ID tune for current bank
 		dw playmusic
 		dw spt_pause, $2000
-		spthread_end
+		SPTHREAD_END
 
 		ld	a,$FF
 		cp	e
@@ -279,28 +276,28 @@ spt_play_testresult:
 	.zero:
 		ld	hl,tones_bitgood
 	.msbe_cont:
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw playmusic
 		dw spt_pause, $2000
-		spthread_end
+		SPTHREAD_END
 
 		; pause $4000
 		dec	d
 		jr	nz,.showbit
 		jr	.done
 	.allbad:
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw spt_playmusic, tones_bytebad
 		dw spt_pause, $8000
-		spthread_end
+		SPTHREAD_END
 		jr	.done
 	.allgood:
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw spt_playmusic, tones_bytegood
 		dw spt_pause, $8000
-		spthread_end
+		SPTHREAD_END
 	.done:
-		spthread_restore			; restore the stack pointer
+		SPTHREAD_RESTORE			; restore the stack pointer
 		ret
 
 
@@ -359,7 +356,7 @@ do_charset:
 
 include "inc/spt.asm"
 include "inc/memtestmarch.asm"
-include "inc/trs80con.asm"
+include "inc/trs80m13con.asm"
 include "inc/trs80music.asm"
 
 label_vram:	dbz " 1K VRAM 3C00-3FFF "
@@ -368,9 +365,9 @@ label_dram16k1:	dbz "16K DRAM 4000-7FFF "
 label_dram16k2:	dbz "16K DRAM 8000-BFFF "
 label_dram16k3:	dbz "16K DRAM C000-FFFF "
 
-; vramstackmsg:	dbz "STACK IN VRAM ->"
 msg_banner:	dbz "TRS-80 M1/M3 TEST ROM -- FRANK IZ8DWF / DAVE KI3V / ADRIAN BLACK"
 msg_charset:	dbz "-CHARACTER SET-"
+; msg_testing:	db " ", " "+$80, "t"+$80, "e"+$80, "s"+$80, "t"+$80, " "+$80, "  ", 0
 msg_testing:	dbz "..TEST.. "
 msg_testok:	dbz "---OK--- "
 msg_biterrs:	dbz "BIT ERRS "

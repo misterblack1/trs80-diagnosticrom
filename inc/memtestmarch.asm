@@ -2,13 +2,13 @@
 ; This function must be RELOCATABLE (only relative jumps), and use NO RAM or STACK.
 ; These restrictions lead to somewhat long-winded, repetative code.
 
-;; March C algorithm:
-;;  1: write each location bottom to top with test value
-;;  2: read each location bottom to top, compare to test value, then write complement
-;;  3: read each location bottom to top, compare to complement, then write test value
-;;  4: read each location top to bottom, compare to test value, then write complement
-;;  5: read each location top to bottom, compare to complement, then write test value
-;;  6: read each location top to bottom, compare to test value
+;; March C- algorithm:
+;;  1: (up w0) write each location bottom to top with test value
+;;  2: (up r0,w1) read each location bottom to top, compare to test value, then write complement
+;;  3: (up r1,w0) read each location bottom to top, compare to complement, then write test value
+;;  4: (dn r0,w1) read each location top to bottom, compare to test value, then write complement
+;;  5: (dn r1,w0) read each location top to bottom, compare to complement, then write test value
+;;  6: (dn r0) read each location top to bottom, compare to test value
 
 ; Arguments:
 ;	hl = current memory position under test
@@ -49,7 +49,7 @@ memtestmarch:
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
-		cp	$ff			; if we have already found all bits bad
+		cp	$FF			; if we have already found all bits bad
 		jr	z,mtm_done_bounce	; then quit
 		ld	a,d			; reload a with correct value
 	mtm2cont:
@@ -73,12 +73,12 @@ memtestmarch:
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
-		cp	$ff			; if we have already found all bits bad
+		cp	$FF			; if we have already found all bits bad
 		jr	z,mtm_done_bounce	; then quit
 		ld	a,d			; reload a with correct value
 	mtm3cont:
 		ld	(hl),d			; fill with test value
-		ld	a,$FF			; keep going so long as bc doesn't become -1 ($FFFF)
+		; ld	a,$FF			; keep going so long as bc doesn't become -1 ($FFFF)
 		inc	hl
 		dec	bc
 		xor	a			; keep going so long as bc doesn't become -1 ($FFFF)
@@ -180,4 +180,5 @@ memtestmarch:
 		scf
 		ret
 
+memtestmarch_end equ $
 ;-----------------------------------------------------------------------------
