@@ -80,6 +80,7 @@ test_vram:
 	.vramok:
 		dw con_clear
 		dw spt_con_print, msg_banner		; print the banner
+		dw spt_print_charset
 
 		dw spt_select_test, tp_vram
 		dw spt_announcetest 			; print results of VRAM tst
@@ -88,8 +89,6 @@ test_vram:
 	; .play_vramgood:
 	; 	dw spt_playmusic, tones_vramgood	; play the VRAM good tones
 	; .vram_continue:
-
-		dw spt_print_charset
 
 	.start:	
 		dw spt_select_test, tp_rdest		; load the test parameters

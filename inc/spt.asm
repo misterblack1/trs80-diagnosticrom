@@ -31,6 +31,11 @@ spt_jp_nc:	pop	hl
 		ld	sp,hl
 		ret
 
+spt_jp_c:	pop	hl
+		ret	nc
+		ld	sp,hl
+		ret
+
 ; spt_jp_z:	pop	hl
 ; 		ret	nz
 ; 		ld	sp,hl
