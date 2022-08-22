@@ -17,8 +17,8 @@ You should familiarize yourself with the system schematics and design of the TRS
 
 Videos:
 - [Part 1](https://youtu.be/EGFKjjlvKf4)
-- Part 2 (not yet)
-- Companion Video (ROM deep dive, not yet)
+- [Part 2](https://youtu.be/Hh8dRgtu1Jk)
+- [Companion Video (ROM deep dive)](https://youtu.be/4fuuyLiSgsE)
 
 In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
@@ -98,6 +98,12 @@ When bad bits are detected in VRAM or DRAM, you will hear a beep code telling yo
 ![Mother Board Components](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%203%20Motherboard%20Layout%20Small%20800.png?raw=true)
 
 The Model 3 motherboard layout is shown above. I recommend referring to the Radio Shack Technical Service Manual for help in identifying what components might be bad on your system, but the picture should give you a head-start.
+
+![Model 1 Motherboard](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%201%20DRAM%20and%20VRAM.png?raw=true)
+
+The Model 1 motherboard has only 1 bank of DRAM, which can 4k or 16k. If the system has 16k, then an additional 32k can be installed in an attached expansion interface.
+
+For the ROM position in the Level II PCB, you must figure out which ROM is the lower ROM. You may have to look up part numbers of the chips to figure that out. 
 
 ## Building
 

@@ -6,7 +6,7 @@ Writing any non-trivial program on a Z80 to operate without using RAM is an extr
 - You cannot use the `CALL` or `RET` instructions in any conventional sense
 - You cannot store variables to the stack using `PUSH`, or move data between registers with `PUSH` and `POP`
 - You can only keep track of as much variable information as will fit in the registers
-	- ... and some of those registers, especially `A`, will be needed
+	- ... and some of those registers, especially `A`, will be consumed by just about any operation or computation at all
 - Moving data between registers is hampered by the fact that some pathways generally use RAM as an intermediate location
 
 I by no means an expert at Z80 assembly language; this project is my first Z80 program.  I did not invent the techniques used in this program, although I have not seen them combined in exactly this form elsewhere.  This was a learning experience for me, and this document aims to help others who are starting from a similar level of experience to mine learn some of the lessons I did.
@@ -96,9 +96,9 @@ proc3:	; do something without arguments
 
 For lack of a more creative term, I call this "Stack Pointer Threading", or SPT.  This is not an invention of mine, just an implementation of the method Jens described.  The trick is to remember that the `SP` register serves the purpose of the instruction pointer, for the threaded code addresses.
 
-(For attempted clarity, I will use the term "instruction pointer" to refer to threaded code, to distinguis between that and the Z80's `PC` register.)
+(For attempted clarity, I will use the term "instruction pointer" to refer to threaded code, to distinguish between that and the Z80's `PC` register.)
 
-The "interpreter" consists of two instructions: `RET` calls the next threaded operation, and `POP` fetches a parameter from the instruction stream.  It's just two Z80 instructions.  There is no interpreter subroutine.
+The "interpreter" consists of just two instructions: `RET` calls the next threaded operation, and `POP` fetches a parameter from the instruction stream.  It's just two Z80 instructions.  There is no need for an interpreter subroutine.
 
 Now we have code that 'calls' subroutines &mdash; limited to one level deep, and with only fixed arguments passed on the stack.  Still, they feel almost like regular subroutines, save for the fact that `POP` instructions are not balanced with `PUSH` instructions anywhere else.
 
@@ -148,7 +148,7 @@ It's worth saying this here: this is extremely slow compared to native Z80 `CALL
 
 There are a handful of refinements such as the ability to jump to a copy of the epliogue (not the prologue), and even returning to the previous threaded 'stack' frame from within a primitive operation, but the useful portions of the method are described here.
 
-I doubt that I am the first to use this method, and I doubt that I have implemented it in the optimal way.  I would be very interested to hear suggestions for improving this technique.  Please submit an "Issue" with your suggestion so that we can get in contact.
+I doubt that I am the first to use this method, and I doubt that I have implemented it in the optimal way.  I would be very interested to hear suggestions for improving this technique.  Please submit a "Issue" or start a "Discussion" on the main Github page for this project with any suggestions or thoughts you may have.
 
 ## _Virtual Machine_ revisited
 
