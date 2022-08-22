@@ -52,7 +52,7 @@ test_vram:
 		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
 		dw spt_check_7bit_vram
-		dw spt_sim_error, $40
+		; dw spt_sim_error, $40
 		dw spt_jp_nc, .vram_ok
 
 		; we have bad vram
@@ -79,14 +79,6 @@ test_vram:
 		dw spt_playmusic, tones_vramgood	; play the VRAM good tones
 
 	.vram_continue:
-		; dw spt_con_goto
-		; 	MAC_SPT_CON_OFFSET 9,24
-		; dw spt_con_print, msg_charset		; show a copy of the character set
-
-SPT_SKIP_NMIVEC
-		; dw con_NL
-		; dw spt_charset_here
-
 		MAC_SPT_CON_GOTO 3,0
 		dw spt_select_test, tp_bank
 
@@ -99,6 +91,8 @@ SPT_SKIP_NMIVEC
 		dw spt_jp, .start
 	.banks_4k:
 		dw spt_select_test, tp_4k			; load the first test
+
+SPT_SKIP_NMIVEC
 
 	.start	dw spt_con_goto
 			MAC_SPT_CON_OFFSET 3,0

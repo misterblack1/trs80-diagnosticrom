@@ -105,9 +105,9 @@ test_vram:
 		dw spt_select_test, tp_low		; select the low mem test next
 		dw spt_announcetest			; announce that we're skipping the relocating test
 
-SPT_SKIP_NMIVEC
-
 		dw spt_con_print, msg_skipped		; we can't run the low test
+
+SPT_SKIP_NMIVEC
 
 		dw spt_jp, .table
 		

@@ -10,7 +10,7 @@ HEXFILES = $(TARGET:%=%.hex)
 
 all: $(BINFILES)
 trs80m13diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m13con.asm inc/trs80music.asm Makefile os.mk
-trs80m2diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m2con.asm inc/trs80m2music.asm Makefile os.mk
+trs80m2diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m2con.asm Makefile os.mk
 
 .PHONY: clean realclean
 clean: 
