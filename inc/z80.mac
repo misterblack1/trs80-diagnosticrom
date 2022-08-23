@@ -10,6 +10,11 @@ dbz .macro string
 	db "`string`", 0
 .endm
 
+nop12 .macro
+		jr	$+2
+.endm
+
+
 ; interrupt vectors: these need to be located at 38h and 66h, so there is little
 ; code space before them.  They should probably be present so that any incoming interrupts
 ; won't kill the test routines.  The INT vector is probably unnecessary but the NMI should

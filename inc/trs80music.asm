@@ -4,10 +4,6 @@
 ; destroys: a,bc,hl
 ; preserves: de,ix
 
-nop12 .macro
-		jr	$+2
-.endm
-
 spt_playmusic:	
 		pop	hl
 		; fall through to playmusic

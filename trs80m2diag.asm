@@ -49,8 +49,10 @@ reset:
 		di					; mask INT
 		im	1
 
-		ld	a,$81		; enable video memory access
+		ld	a,$81				; enable video memory access
 		out	($FF),a
+		ld	a,1
+		out	($EF),a				; turn on the drive light at the very start (select drive 0)
 
 init_crtc:
 		ld	bc,$0FFC	; count $0F, port $FC crtc address reg
@@ -65,15 +67,23 @@ init_crtc:
 
 test_vram:
 		SPTHREAD_BEGIN				; set up to begin running threaded code
+		dw spt_chartest				; the VRAM tests bad.  Report and loop
+		dw spt_pause,$0000
+		dw m2_drivelight_off
 		; dw spt_playmusic, tones_welcome
 		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
+		; dw spt_sim_error,$F0
 		dw spt_jp_nc, .vramok
 
 		dw spt_chartest				; the VRAM tests bad.  Report and loop
 	.vrambadloop:
 		; dw spt_play_testresult
 		; dw spt_pause, $FFFF
+		; rept 8
+		; 	dw m2_blink_bit
+		; endm
+		dw m2_blink_biterrs
 		dw spt_jp, .vrambadloop
 
 
@@ -89,6 +99,8 @@ test_vram:
 	; .play_vramgood:
 	; 	dw spt_playmusic, tones_vramgood	; play the VRAM good tones
 	; .vram_continue:
+
+SPT_SKIP_NMIVEC
 
 	.start:	
 		dw spt_select_test, tp_rdest		; load the test parameters
@@ -106,8 +118,6 @@ test_vram:
 		dw spt_announcetest			; announce that we're skipping the relocating test
 
 		dw spt_con_print, msg_skipped		; we can't run the low test
-
-SPT_SKIP_NMIVEC
 
 		dw spt_jp, .table
 		
@@ -159,6 +169,20 @@ SPT_SKIP_NMIVEC
 
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
+
+m2_drivelight_off:
+		; ld	a,' '
+		; ld	(VBASE),a
+		ld	a,$0F
+		jr	m2_drivelight_set
+
+m2_drivelight_on:
+		; ld	a,' '+$80
+		; ld	(VBASE),a
+		ld	a,$0E
+m2_drivelight_set:
+		out	($EF),a
+		ret
 
 spt_sim_error:
 		pop	de
@@ -322,11 +346,15 @@ spt_pause:
 		pop	bc
 ; pause by an amount specified in BC
 ; do_pause:
+		ex	af,af'
 	.loop:
+		nop12
+		nop12
 		dec	bc
 		ld	a,b
 		or	c
 		jr	nz,.loop
+		ex	af,af'
 		ret
 
 
@@ -348,6 +376,40 @@ print_biterrs:
 
 		ret
 
+spt_rlc_e:
+		rlc	e
+		ret
+
+m2_blink_bit:
+		; rlc	e
+		SPTHREAD_ENTER
+		dw spt_rlc_e
+		dw m2_drivelight_on
+		dw spt_jp_c, .long
+		dw spt_pause, $2000
+		dw spt_jp, .off
+	.long:
+		dw spt_pause, $FFFF
+	.off:
+		dw m2_drivelight_off
+		dw spt_pause, $8000
+		dw spt_exit
+		
+
+m2_blink_biterrs:
+		SPTHREAD_ENTER
+		dw m2_blink_bit
+		dw m2_blink_bit
+		dw m2_blink_bit
+		dw m2_blink_bit
+		dw m2_blink_bit
+		dw m2_blink_bit
+		dw m2_blink_bit
+		dw m2_blink_bit
+		dw spt_pause, $00
+		dw spt_pause, $00
+		dw spt_pause, $00
+		dw spt_exit
 
 
 
