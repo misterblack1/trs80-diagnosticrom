@@ -117,6 +117,7 @@ On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left mos
 
 # Running this diagnostic ROM on a TRS-80 Model 2
 _This section to be completed._
+
 **Warning: This code is still untested on real Model 2 hardware.  DO NOT USE THIS CODE YET.  We still need to confirm that the CRTC is initialized properly and will not damage your Model II's CRT, yoke, or analog circuitry.**
 ## Other troubleshooting notes
 
