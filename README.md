@@ -1,12 +1,15 @@
 # TRS-80 Diagnostic ROM
 
 Model I with 4K:
+
 ![Normal Operationm, M3 48K](documentation/M1_4k_animated.gif)
 
 Model III with 48K:
+
 ![Normal Operationm, M1 4K](documentation/M3_48k_animated.gif)
 
 Model II with 128K:
+
 ![Normal Operationm, M2 128K](documentation/M2_128k_animated.gif)
 
 #### Main contributors:
