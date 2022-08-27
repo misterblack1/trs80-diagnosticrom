@@ -92,6 +92,8 @@ test_vram:
 		dw spt_con_print, msg_banner		; print the banner
 		dw spt_print_charset
 
+		dw fdc_reset_head
+
 		dw spt_select_test, tp_vram
 		dw spt_announcetest 			; print results of VRAM tst
 		dw spt_con_print, msg_testok
@@ -170,6 +172,113 @@ SPT_SKIP_NMIVEC
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
 
+fdc_reg_pio			equ	$e0
+fdc_reg_status			equ	$e4	; status register, read only
+fdc_reg_track			equ	$e5
+fdc_reg_sector			equ	$e6
+fdc_reg_data			equ	$e7
+fdc_reg_reset			equ	$e8	; write only, late board revisions
+
+
+fdc_reg_select			equ	$ef	; write only
+fdc_select_mfm			equ	$80
+fdc_select_s0			equ	$40
+fdc_select_none			equ	$0f
+fdc_select_d0			equ	$0e
+fdc_select_d1			equ	$0d
+fdc_select_d2			equ	$0b
+fdc_select_d3			equ	$07
+
+fdc_reg_cmd			equ	$e4	; command register, write only
+fdc_cmd_restore			equ	$00
+fdc_cmd_seek			equ	$10
+fdc_cmd_step			equ	$20
+fdc_cmd_step_in			equ	$40
+fdc_cmd_step_out		equ	$60
+fdc_cmd_read_sector		equ	$80
+fdc_cmd_write_sector		equ	$a0
+fdc_cmd_read_address		equ	$c0
+fdc_cmd_read_track		equ	$e0
+fdc_cmd_write_track		equ	$f0
+fdc_cmd_force_int		equ	$d0
+
+; additional flags OR'd into restore/seek/step commands
+fdc_cmd_update_track		equ	$10	       ; step commands only
+fdc_cmd_head_load		equ	$08
+fdc_cmd_verify_track		equ	$04
+fdc_cmd_step_rate_3ms		equ	$00
+fdc_cmd_step_rate_6ms		equ	$01
+fdc_cmd_step_rate_10ms		equ	$02
+fdc_cmd_step_rate_15ms		equ	$03
+
+; interrupt reason selection for force_int command
+fdc_cmd_force_int_immediate	equ	$08
+fdc_cmd_force_int_index		equ	$04
+fdc_cmd_force_int_not_ready	equ	$02
+fdc_cmd_force_int_ready		equ	$01
+
+
+fdc_terminate_cmd:
+		; push	bc
+	.start:	ld	a,fdc_cmd_force_int+fdc_cmd_force_int_immediate
+		out	(fdc_reg_cmd),a
+		ld	a,fdc_cmd_force_int
+		out	(fdc_reg_cmd),a
+
+		ld	b,18
+	.delay:	djnz	.delay
+
+		in	a,(fdc_reg_data)	; to reset DRQ, presumably
+		in	a,(fdc_reg_status)
+		; pop	bc
+		ret
+
+fdc_wait_ready:
+		SPTHREAD_ENTER
+	.term:	dw fdc_terminate_cmd
+		dw fdc_jp_notready,.term
+		ret
+
+fdc_reset_head:
+		ld	a,fdc_select_s0|fdc_select_d0	; select d0s0
+		out	(fdc_reg_select),a
+
+		SPTHREAD_ENTER
+	.term:	dw fdc_terminate_cmd			; reset FDC
+		dw fdc_jp_notready,.term
+		SPTHREAD_LEAVE
+
+		ld	c,5				; step inward 5 tracks
+	.silp:	ld	a,fdc_cmd_step_in|fdc_cmd_update_track|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
+		out	(fdc_reg_cmd),a
+
+		ld	b,0				; short delay for FDC to respond
+	.dly1:	djnz	.dly1
+
+	.wrdy1:	in	a,(fdc_reg_status)		; wait for ready indication
+		bit	0,a
+		jr	nz,.wrdy1
+	
+		dec	c
+		jr	nz,.silp			; repeate the stepping
+	
+		ld	a,fdc_cmd_restore|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
+		out	(fdc_reg_cmd),a			; restore head to track zero
+
+		ld	b,0				; short delay for FDC to respond
+	.dly2:	djnz	.dly2
+
+	.wrdy2:	in	a,(fdc_reg_status)		; wait for ready indication
+		bit	0,a
+		jr	nz,.wrdy2
+
+		ret
+
+
+
+
+
+
 m2_drivelight_off:
 		; ld	a,' '
 		; ld	(VBASE),a
@@ -229,6 +338,14 @@ spt_jp_e_zero:
 		ld	a,0				; test clean
 		cp	e				; see if there are other errors
 		ret	nz				; return without jump if there is NOT a match
+		ld	sp,hl				; else jump to the requested location
+		ret
+
+fdc_jp_notready:
+spt_jp_a7_nz:
+		pop	hl				; get the address for jumping if match
+		bit	7,a				; test bit 7
+		ret	z				; return without jump if there is NOT a match
 		ld	sp,hl				; else jump to the requested location
 		ret
 
