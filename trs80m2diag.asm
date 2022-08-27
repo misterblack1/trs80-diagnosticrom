@@ -272,6 +272,13 @@ fdc_reset_head:
 		bit	0,a
 		jr	nz,.wrdy2
 
+		SPTHREAD_ENTER
+		dw spt_pause,$0000
+		SPTHREAD_LEAVE
+
+		ld	a,fdc_select_none		; deselect the drive
+		out	(fdc_reg_select),a
+
 		ret
 
 
