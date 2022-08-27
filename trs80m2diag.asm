@@ -173,13 +173,13 @@ SPT_SKIP_NMIVEC
 m2_drivelight_off:
 		; ld	a,' '
 		; ld	(VBASE),a
-		ld	a,$0F
+		ld	a,$4F
 		jr	m2_drivelight_set
 
 m2_drivelight_on:
 		; ld	a,' '+$80
 		; ld	(VBASE),a
-		ld	a,$0E
+		ld	a,$4E
 m2_drivelight_set:
 		out	($EF),a
 		ret
