@@ -38,13 +38,13 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 	- Keep in mind however, that other faults, such as address line problems, can keep this (or any) ROM from running properly.
 - One ROM image for **TRS-80 Model I, or III**
 	- Audio feedback via the cassette port, so you can tell what's happening even if you have no video display.
-	- Auto detection of VRAM type (The Model 1 comes with 7-bit VRAM)
+	- Auto detection of VRAM type (The Model I comes with 7-bit VRAM)
 	- Auto detection of bank size (4k or 16k)
 		- A machine with 4K bank size cannot have RAM at 12K ($7000).  If the ROM tests that region and finds all bits bad, it assumes this is a 4K machine.
 		- Officially, a machine with a 4K bank can only have 4K total, so this ROM does not test beyond the first bank in that case.
 	- Testing up to 48k of DRAM, looping continually.
 - One ROM image for **TRS-80 Model II** with all DRAM sizes.
-	- The same image is expected to work with the Model 12, 16, or 6000, although this is not tested.
+	- The same image is expected to work with the Model I2, 16, or 6000, although this is not tested.
 	- Testing up to 512k of DRAM, looping continually.
 	- Temporarily relocates the test subroutine into previously tested RAM at `$4000` and unmaps the ROM from Z80 address space to test the RAM between `$0000` and `$3FFF`.
 		- The stock ROM does not test the region of DRAM from `$0000`-`$0FFF` that is hidden while the ROM is mapped.
@@ -53,7 +53,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 ## Future improvements
 
-- Testing the ROM on "Big Tandy" systems like the Model 12, 16, and 6000.
+- Testing the ROM on "Big Tandy" systems like the Model I2, 16, and 6000.
 - Porting to the Model 4
 - Porting the diagnostic routines to other Z80 systems
 	- Kaypro II'83, 4'83, 10, 2'84, 4'84, 1
@@ -61,19 +61,23 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 # What the ROM does
 
-- Makes a beep from the cassette port (so you can know the system is executing the ROM.)
-- Set the system to 64 column mode (80 column mode on machines that support it).
+- Makes sounds to let you know the ROM is running even if the display is not operating properly:
+	- On the Model I/III:
+		- Makes a beep from the cassette port (so you can know the system is executing the ROM.)
+	- On the Model II:
+		- Accesses the built-in floppy drive three times.  The activity light should activate and the head solenoid should click.
+- Set the system to 64 or 80 column mode depending on the machine.
 - Tests the video RAM using a March C test.
-	- On the Model 1/3:
-		- Tests for 7-bit Model 1 VRAM (fake bit 6) and identifies it if found.
+	- On the Model I/III:
+		- Tests for 7-bit Model I VRAM (fake bit 6) and identifies it if found.
 		- Beeps a good (rising tones) or bad (tune ending on low note) VRAM sound. 
 		- If the VRAM is bad, it will show a test pattern on the screen, then beep out which bit(s) are bad repeatedly.
-	- On the Model 2:
+	- On the Model II:
 		- If the VRAM is bad, it will show a test pattern on the screen, then blink the drive light on floppy 0
 			- The bits of VRAM are indicated by long or short blinks, counting from bit 7 down to bit 0.
 				- A long blink means that bit is bad.  A short blink means that bit is good.
 - Clears screen and writes a welcome message.
-- On the Model 1/3:
+- On the Model I/III:
 	- If the first bank of DRAM only has 4K:
 		- Tests that first bank of 4k repeatedly.
 	- If the first bank of DRAM is 16k:
@@ -88,7 +92,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 		- Then the diagnostic tests all possible DRAM pages (`$0-$F`), bank-switching them in turn into the region `$8000-$FFFF`.
 
 
-# Running this diagnostic ROM on a TRS-80 Model 1 or Model 3
+# Running this diagnostic ROM on a TRS-80 Model I or Model III
 
 To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an adapter to allow use of an EPROM in the U104 ROM socket. This socket is designed for a 2364 which does not have a compatible pinout with a 2764 EPROM. Adapter PCBs are widely available on the usual sources, or you can make some PCBs at this link:
 
@@ -98,7 +102,7 @@ The assembled ROM, ready to be burned to EPROM or EEPROM, is `trs80testrom.bin` 
 
 One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up.  (Address `$0000`)
   
-On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left most chip. On the Model 1, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. _(Unconfirmed and untested.)_ Adrian used his 2364 to 2764 adapter in this socket and it mostly worked after he wrote the ROM into the top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model 1.)
+On a TRS-80 Model I with Level II ROM upgrade, the main boot rom is the left most chip. On the Model I, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. _(Unconfirmed and untested.)_ Adrian used his 2364 to 2764 adapter in this socket and it mostly worked after he wrote the ROM into the top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model I.)
   
 - The beep codes for bit errors are as follows:
 	- First a long middle tone is played:
@@ -112,18 +116,22 @@ On a TRS-80 Model 1 with Level II ROM upgrade, the main boot rom is the left mos
 - For example, if your second 16K bank (locations `$8000-$BFFF`) have bits 5 and 3 bad, the following tones will play:
 	- MID(long) MID(long) (pause) HI HI **low** HI **low** HI HI HI
 - If _only_ bit 6 of VRAM is bad, the diagnostic will further test to see if bit 6 is "faked" as the NOR of bits 5 and 7.  
-	- If it is, you will not hear a beep code because the ROM identifies this as the normal 7-bit VRAM in a stock Model 1 machine.
+	- If it is, you will not hear a beep code because the ROM identifies this as the normal 7-bit VRAM in a stock Model I machine.
 	- If bit 6 of VRAM is not consistently the NOR of bits 5 and 6, the screen will be filled with copies of the character set, and the error will be repeatedly reported as tones (HI&nbsp;**low**&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI, identifying bad bit 6).
 
-# Running this diagnostic ROM on a TRS-80 Model 2
+# Running this diagnostic ROM on a TRS-80 Model II
+
+***WARNING***: **You use this ROM (or really, do any troubleshooting inside a Model II or its derivatives) at your own risk!*** 
+
+The CRT on the Model II (and all of the "Big Tandy" machines that use a 6845 CRT Controller chip) are susceptible to damage if they are powered on and run without a valid signal from the video controller board.  It is ***imperative*** that you are careful to connect all of the video-related cables properly.  Also, while we have tested this ROM to program the CRTC correctly, if your EPROM chip is not programmed successfully or not inserted into the ROM socket correctly such that no ROM code runs, your CRT may be damaged!  Even if you are sure everything has been prepared correctly, make sure you are ready to cut power if you hear strange sounds from the CRT or anything doesn't seem right.  The technial manuals suggest that you have roughly ***3 seconds*** to cut power before there is risk of damage to the CRT.
+
 _This section to be completed._
 
-**Warning: This code is still untested on real Model 2 hardware.  DO NOT USE THIS CODE YET.  We still need to confirm that the CRTC is initialized properly and will not damage your Model II's CRT, yoke, or analog circuitry.**
 ## Other troubleshooting notes
 
 - On the Model 3, you **must** have a working connection between JP2A and JP2B to run this diagnostic. Both the cassette port (for audio output) and the video subsystem is accessed by the CPU via this interconnect. Bits 0 and 1 of this interconnection are needed for the cassette port audio, but all 8 bits are required for video to work. 
 - You do not need the interconnect between JP1A and JP1B. This is used by only the floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
-- On the Model 3, the cassette port output is the pin closest to the keyboard connector (Connector J3). On the Model 1, you can either clip a test lead onto the cassette port, or use the cassette DIN cable to get audio output. 
+- On the Model 3, the cassette port output is the pin closest to the keyboard connector (Connector J3). On the Model I, you can either clip a test lead onto the cassette port, or use the cassette DIN cable to get audio output. 
 - You do not need any DRAM installed in the machine for the diagnostic to run. If you have good working VRAM but no working DRAM, you should see the DRAM tests run, and all banks will come back as bad. 
 - Keep in mind a stuck or bad DRAM bus transceiver can trash the entire bus, causing the VRAM test to also fail.
 - You do not need the keyboard connected for the system to run the diagnostic. The keyboard is not used during the test at all.
@@ -137,9 +145,9 @@ _This section to be completed._
 
 The Model 3 motherboard layout is shown above. I recommend referring to the Radio Shack Technical Service Manual for help in identifying what components might be bad on your system, but the picture should give you a head-start.
 
-![Model 1 Motherboard](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%201%20DRAM%20and%20VRAM.png?raw=true)
+![Model I Motherboard](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%201%20DRAM%20and%20VRAM.png?raw=true)
 
-The Model 1 motherboard has only 1 bank of DRAM, which can 4k or 16k. If the system has 16k, then an additional 32k can be installed in an attached expansion interface.
+The Model I motherboard has only 1 bank of DRAM, which can 4k or 16k. If the system has 16k, then an additional 32k can be installed in an attached expansion interface.
 
 For the ROM position in the Level II PCB, you must figure out which ROM is the lower ROM. You may have to look up part numbers of the chips to figure that out. 
 

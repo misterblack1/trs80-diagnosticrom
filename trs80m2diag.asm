@@ -116,7 +116,8 @@ test_vram:
 
 SPT_SKIP_NMIVEC
 
-		dw spt_con_print, msg_biterrs		; we have errors in the rdest bank
+		; dw spt_con_print, msg_biterrs		; we have errors in the rdest bank
+		dw print_errsmsg
 		dw print_biterrs
 
 		dw spt_select_test, tp_low		; select the low mem test next
@@ -139,7 +140,8 @@ SPT_SKIP_NMIVEC
 		; dw spt_sim_error, $C0
 		dw spt_jp_nc, .zerook
 		
-		dw spt_con_print, msg_biterrs		; we have errors: print the bit string
+		; dw spt_con_print, msg_biterrs		; we have errors: print the bit string
+		dw print_errsmsg
 		dw print_biterrs
 		; dw spt_play_testresult			; play the tones for bit errors
 		dw spt_jp, .table
@@ -157,7 +159,8 @@ SPT_SKIP_NMIVEC
 		dw vram_map
 		dw spt_jp_nc, .ok
 		
-		dw spt_con_print, msg_biterrs		; we have errors: print the bit string
+		; dw spt_con_print, msg_biterrs		; we have errors: print the bit string
+		dw print_errsmsg
 		dw print_biterrs
 		; dw spt_play_testresult			; play the tones for bit errors
 		dw spt_jp, .cont
@@ -346,7 +349,15 @@ spt_sim_error:
 spt_jp_e_zero:
 		pop	hl				; get the address for jumping if match
 		ld	a,0				; test clean
-		cp	e				; see if there are other errors
+		cp	e				; 
+		ret	nz				; return without jump if there is NOT a match
+		ld	sp,hl				; else jump to the requested location
+		ret
+
+spt_jp_e_ff:
+		pop	hl				; get the address for jumping if match
+		ld	a,$FF				; test all bits err
+		cp	e				; 
 		ret	nz				; return without jump if there is NOT a match
 		ld	sp,hl				; else jump to the requested location
 		ret
@@ -485,8 +496,19 @@ spt_pause:
 		ret
 
 
+print_errsmsg:
+		SPTHREAD_ENTER
+		dw spt_jp_e_ff,.missing
+		dw spt_con_print,msg_biterrs
+		dw spt_exit
+	.missing:
+		dw spt_con_print,msg_absent
+		dw spt_exit
 
 print_biterrs:
+		; SPTHREAD_ENTER
+		; dw print_errsmsg
+		; SPTHREAD_LEAVE
 		ld	a,'7'
 		ld	b,8
 	.showbit:
@@ -600,6 +622,7 @@ msg_testok:	dbz " --OK-- "
 msg_reloc:	dbz "(reloc) "
 msg_skipped:	dbz " *skip* "
 msg_biterrs:	dbz " errors:"
+msg_absent:	dbz " absent:"
 msg_testing:	db " ", " "+$80, "t"+$80, "e"+$80, "s"+$80, "t"+$80, " "+$80, " ", 0
 status_backup equ $-msg_testing-1
 
