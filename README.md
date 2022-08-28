@@ -19,7 +19,7 @@ Model II with 128K:
 
 ## Introduction from Adrian
 
-This project was born out of a broken TRS-80 Model 3 that I was working on. I could not tell if the system was even "executing code," so I used an early version of this ROM to help diagnose the problem.
+This project was born out of a broken TRS-80 Model III that I was working on. I could not tell if the system was even "executing code," so I used an early version of this ROM to help diagnose the problem.
 
 Please know that the main goal of this ROM is to test the functionality of the video RAM (VRAM) and the dynamic RAM (DRAM, system memory.) It does not test any other component unrelated to those two subsystems. If a TRS-80 has good VRAM and DRAM, it should boot into basic where you can then run further tests. 
 
@@ -44,7 +44,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 		- Officially, a machine with a 4K bank can only have 4K total, so this ROM does not test beyond the first bank in that case.
 	- Testing up to 48k of DRAM, looping continually.
 - One ROM image for **TRS-80 Model II** with all DRAM sizes.
-	- The same image is expected to work with the Model I2, 16, or 6000, although this is not tested.
+	- The same image is expected to work with the Model 12, 16, or 6000, although this is not tested.
 	- Testing up to 512k of DRAM, looping continually.
 	- Temporarily relocates the test subroutine into previously tested RAM at `$4000` and unmaps the ROM from Z80 address space to test the RAM between `$0000` and `$3FFF`.
 		- The stock ROM does not test the region of DRAM from `$0000`-`$0FFF` that is hidden while the ROM is mapped.
@@ -53,7 +53,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 ## Future improvements
 
-- Testing the ROM on "Big Tandy" systems like the Model I2, 16, and 6000.
+- Testing the ROM on "Big Tandy" systems like the Model 12, 16, and 6000.
 - Porting to the Model 4
 - Porting the diagnostic routines to other Z80 systems
 	- Kaypro II'83, 4'83, 10, 2'84, 4'84, 1
@@ -94,13 +94,13 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 # Running this diagnostic ROM on a TRS-80 Model I or Model III
 
-To use this diagnostic ROM on a TRS-80 Model 3, you must first make or buy an adapter to allow use of an EPROM in the U104 ROM socket. This socket is designed for a 2364 which does not have a compatible pinout with a 2764 EPROM. Adapter PCBs are widely available on the usual sources, or you can make some PCBs at this link:
+To use this diagnostic ROM on a TRS-80 Model III, you must first make or buy an adapter to allow use of an EPROM in the U104 ROM socket. This socket is designed for a 2364 which does not have a compatible pinout with a 2764 EPROM. Adapter PCBs are widely available on the usual sources, or you can make some PCBs at this link:
 
 [PCBway Project Link for EPROM adapter](https://www.pcbway.com/project/shareproject/Adapter_2364___27128__by_Bobbel_.html)
 
 The assembled ROM, ready to be burned to EPROM or EEPROM, is `trs80testrom.bin` or `trs80testrom.hex`.  Both contain the same ROM image, so you can use whichever is more convenient with your EPROM programmer's software.
 
-One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model 3. This is the boot ROM that the CPU starts to execute code from at power-up.  (Address `$0000`)
+One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model III. This is the boot ROM that the CPU starts to execute code from at power-up.  (Address `$0000`)
   
 On a TRS-80 Model I with Level II ROM upgrade, the main boot rom is the left most chip. On the Model I, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. _(Unconfirmed and untested.)_ Adrian used his 2364 to 2764 adapter in this socket and it mostly worked after he wrote the ROM into the top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model I.)
   
@@ -129,13 +129,13 @@ _This section to be completed._
 
 ## Other troubleshooting notes
 
-- On the Model 3, you **must** have a working connection between JP2A and JP2B to run this diagnostic. Both the cassette port (for audio output) and the video subsystem is accessed by the CPU via this interconnect. Bits 0 and 1 of this interconnection are needed for the cassette port audio, but all 8 bits are required for video to work. 
+- On the Model III, you **must** have a working connection between JP2A and JP2B to run this diagnostic. Both the cassette port (for audio output) and the video subsystem is accessed by the CPU via this interconnect. Bits 0 and 1 of this interconnection are needed for the cassette port audio, but all 8 bits are required for video to work. 
 - You do not need the interconnect between JP1A and JP1B. This is used by only the floppy and serial board. The system will operate fine without the interconnect, but you will not be able to use the floppy or serial port. 
-- On the Model 3, the cassette port output is the pin closest to the keyboard connector (Connector J3). On the Model I, you can either clip a test lead onto the cassette port, or use the cassette DIN cable to get audio output. 
+- On the Model III, the cassette port output is the pin closest to the keyboard connector (Connector J3). On the Model I, you can either clip a test lead onto the cassette port, or use the cassette DIN cable to get audio output. 
 - You do not need any DRAM installed in the machine for the diagnostic to run. If you have good working VRAM but no working DRAM, you should see the DRAM tests run, and all banks will come back as bad. 
 - Keep in mind a stuck or bad DRAM bus transceiver can trash the entire bus, causing the VRAM test to also fail.
 - You do not need the keyboard connected for the system to run the diagnostic. The keyboard is not used during the test at all.
-- The diagnostic ROM **must** be installed into U104 on the TRS-80 Model 3. You must use a 2364 to 27XXX adapter. The one Adrian used is made for 27128 devices, but it works just fine with 2764 and more conveniently 28B64C (EEPROMs.) 
+- The diagnostic ROM **must** be installed into U104 on the TRS-80 Model III. You must use a 2364 to 27XXX adapter. The one Adrian used is made for 27128 devices, but it works just fine with 2764 and more conveniently 28B64C (EEPROMs.) 
 - You can also use this same adapter in U105 (for testing replacement of that ROM, **not** for running this diagnostic ROM). You can use a normal 2716 in U106 if you need to test replacing that ROM.
 - You do not need to have any ROM installed in U105 or U106 during the test, as they are not used by the diagnostics. A bad ROM in one of those sockets could cause the computer to not work, so if even this diagnostic ROM does not work, it would be advisable to try pulling those ROMs.
 
@@ -143,7 +143,7 @@ _This section to be completed._
 
 ![Mother Board Components](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%203%20Motherboard%20Layout%20Small%20800.png?raw=true)
 
-The Model 3 motherboard layout is shown above. I recommend referring to the Radio Shack Technical Service Manual for help in identifying what components might be bad on your system, but the picture should give you a head-start.
+The Model III motherboard layout is shown above. I recommend referring to the Radio Shack Technical Service Manual for help in identifying what components might be bad on your system, but the picture should give you a head-start.
 
 ![Model I Motherboard](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%201%20DRAM%20and%20VRAM.png?raw=true)
 
