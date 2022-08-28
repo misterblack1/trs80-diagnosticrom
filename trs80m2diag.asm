@@ -51,8 +51,8 @@ reset:
 
 		ld	a,$81				; enable video memory access
 		out	($FF),a
-		ld	a,1
-		out	($EF),a				; turn on the drive light at the very start (select drive 0)
+		; ld	a,1
+		; out	($EF),a				; turn on the drive light at the very start (select drive 0)
 
 init_crtc:
 		ld	bc,$0FFC	; count $0F, port $FC crtc address reg
@@ -68,8 +68,13 @@ init_crtc:
 test_vram:
 		SPTHREAD_BEGIN				; set up to begin running threaded code
 		dw spt_chartest				; the VRAM tests bad.  Report and loop
+
+		dw fdc_reset_head
 		dw spt_pause,$0000
-		dw m2_drivelight_off
+		dw fdc_reset_head
+		dw spt_pause,$0000
+		dw fdc_reset_head
+
 		; dw spt_playmusic, tones_welcome
 		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
@@ -92,8 +97,6 @@ test_vram:
 		dw spt_con_print, msg_banner		; print the banner
 		dw spt_print_charset
 
-		dw fdc_reset_head
-
 		dw spt_select_test, tp_vram
 		dw spt_announcetest 			; print results of VRAM tst
 		dw spt_con_print, msg_testok
@@ -101,8 +104,6 @@ test_vram:
 	; .play_vramgood:
 	; 	dw spt_playmusic, tones_vramgood	; play the VRAM good tones
 	; .vram_continue:
-
-SPT_SKIP_NMIVEC
 
 	.start:	
 		dw spt_select_test, tp_rdest		; load the test parameters
@@ -112,6 +113,8 @@ SPT_SKIP_NMIVEC
 		dw vram_map				; map in VRAM so we can print results
 		; dw spt_sim_error, $C0
 		dw spt_jp_nc, .rdestok
+
+SPT_SKIP_NMIVEC
 
 		dw spt_con_print, msg_biterrs		; we have errors in the rdest bank
 		dw print_biterrs
