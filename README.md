@@ -34,7 +34,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 
 ## Feature List
 
-- No working RAM is needed.  This ROM can work on a machine with faults in both VRAM and DRAM.  For more information, see [this explanation of the techniques used to operate in the absence of working RAM](spt.md).
+- ***Working DRAM or VRAM is not required.***  The initial release of this ROM could use 8-bit VRAM for its stack, or use the first bank of DRAM as a stack if it tested good.  This ROM now does not require a stack, and can run on a machine with faults in both VRAM and DRAM.  For more information, see [this explanation of the techniques used to operate in the absence of working RAM](spt.md).
 	- Keep in mind however, that other faults, such as address line problems, can keep this (or any) ROM from running properly.
 - One ROM image for **TRS-80 Model I, or III**
 	- Audio feedback via the cassette port, so you can tell what's happening even if you have no video display.
