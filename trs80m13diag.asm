@@ -1,15 +1,5 @@
 ; code: language=z80-asm tabSize=8
 
-; configuration defines:
-; Whether to continue to DRAM testing after finding VRAM error.  This can be used
-; to work on DRAM if you know the VRAM is bad, but you don't have replacement chips
-; on hand and want to test DRAM chips too.  By default the released builds stop 
-; if there is a VRAM error and try to display a character test pattern on the screen.
-CONTINUE_ON_VRAM_ERROR = 0
-
-; For debugging in an emulator, you can choose a page number to simulate a bit error
-; while testing.
-SIMULATE_ERROR = 0
 ; SIMULATE_ERROR = $80
 ; SIMULATE_ERROR = $3C
 
@@ -41,9 +31,6 @@ SIMULATE_ERROR = 0
 VBASE  equ 3c00h
 VSIZE  equ 0400h
 VLINE  equ 64
-VREPEAT equ 2
-
-VSTACK equ VBASE+VSIZE
 
 
 		.org 0000h				; z80 boot code starts at location 0
@@ -58,93 +45,60 @@ diagnostics:
 		out	($F8),a				; blank printer port for now
 
 test_vram:
-		spthread_begin				; set up to begin running threaded code
+		SPTHREAD_BEGIN				; set up to begin running threaded code
 
 		dw spt_playmusic, tones_welcome
 
-		dw spt_ld_iy, tp_vram
+		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
-
-.if SIMULATE_ERROR
-		dw spt_simulate_error
-.endif
-
-.if ! CONTINUE_ON_VRAM_ERROR
-		dw spt_jp_nc, .vramok
-		dw spt_jp_e_7bit_vram, .vramok
-
-		dw spt_chartest				; the VRAM tests bad.  Report and loop
-	.vrambadloop:
-		dw spt_play_testresult
-		dw spt_pause, $FFFF
-		dw spt_jp, .vrambadloop
-.endif
-
-	.vramok:
-		dw con_clear
-		dw spt_con_print, msg_banner		; print the banner
-
-		dw spt_ld_iy, tp_vram
-		dw spt_announcetest 			; print results of VRAM tst
-
-		dw spt_jp_e_7bit_vram, .vram_7bit
-
-.if CONTINUE_ON_VRAM_ERROR
-		dw spt_jp_e_zero, .vram_8bit
+		dw spt_check_7bit_vram
+		; dw spt_sim_error, $40
+		dw spt_jp_nc, .vram_ok
 
 		; we have bad vram
-		dw spt_con_print, msg_biterrs		; we have errors: print the bit string
-		dw print_biterrs
+		dw spt_chartest
+	.vram_bad_loop:
 		dw spt_play_testresult			; play the tones for bit errors
-		dw spt_jp,.vram_continue
-.endif
+		dw spt_pause, $0000
+		dw spt_jp,.vram_bad_loop
 
-	.vram_8bit:
-		dw spt_con_print, msg_ok8bit
-		dw spt_jp, .play_vramgood
 	.vram_7bit:
 		dw spt_con_print, msg_ok7bit
+		; dw spt_play_testresult			; play the tones for bit errors
+		dw spt_jp,.vram_goodtones
 
-	.play_vramgood:
+	.vram_ok:
+		dw t_prepare_display
+		MAC_SPT_CON_GOTO 1,0
+		dw spt_announcetest 			; print results of VRAM tst
+		; dw print_biterrs
+		dw spt_jp_e_7bit_vram, .vram_7bit
+		dw spt_con_print, msg_ok8bit
+
+	.vram_goodtones:
 		dw spt_playmusic, tones_vramgood	; play the VRAM good tones
 
 	.vram_continue:
-		dw spt_con_goto
-			spt_con_offset 9,24
-		dw spt_con_print, msg_charset		; show a copy of the character set
+		MAC_SPT_CON_GOTO 3,0
+		dw spt_select_test, tp_bank
 
-if CONTINUE_ON_VRAM_ERROR
-spt_skip_nmivec
-endif
-		dw con_NL
-		dw spt_charset_here
-
-		dw spt_con_goto
-			spt_con_offset 3,0
-		dw spt_ld_iy, tp_bank
 		dw spt_announcetest 			; announce what test we are about to run
-
-if ! CONTINUE_ON_VRAM_ERROR
-spt_skip_nmivec
-endif
-
 		dw memtestmarch				; check for 4k vs 16k
 
 		dw spt_jp_all_bits_bad, .banks_4k
 
-		dw spt_ld_iy, tp_16k			; load the first test
+		dw spt_select_test, tp_16k			; load the first test
 		dw spt_jp, .start
 	.banks_4k:
-		dw spt_ld_iy, tp_4k			; load the first test
+		dw spt_select_test, tp_4k			; load the first test
+
+SPT_SKIP_NMIVEC
 
 	.start	dw spt_con_goto
-			spt_con_offset 3,0
+			MAC_SPT_CON_OFFSET 3,0
 
 	.loop:	dw spt_announcetest 			; announce what test we are about to run
 		dw memtestmarch				; test the current bank
-.if SIMULATE_ERROR
-		dw spt_simulate_error
-.endif
 		dw spt_jp_nc, .ok
 		
 		dw spt_con_print, msg_biterrs		; we have errors: print the bit string
@@ -163,28 +117,64 @@ endif
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
 
-.if SIMULATE_ERROR
-spt_simulate_error:
-		ex	af,af'
+t_prepare_display:
+		SPTHREAD_ENTER
+		dw con_clear
+		dw spt_con_print, msg_banner		; print the banner
+		dw spt_print_charset
+		dw spt_exit
 
-		ld	a,(iy+3)			; get the start address page
-		cp	SIMULATE_ERROR			; match a particular page
-		jr	nz,.noerror				; only error on specific page
-		ld	e,00100001b			; report an error
-		ex	af,af'
-		scf					; and set the carry flag
+spt_check_vram_contents:
+		pop	bc
+		ld	a,b
+		ld	d,c
+; confirm that all of VRAM contains the value in register A
+check_vram_contents:
+		ld	hl,VBASE
+		ld	bc,VSIZE
+	.fillloop:
+		ld	(HL),a
+		cpi
+		jp	pe,.fillloop
+
+		ld	hl,VBASE
+		ld	bc,VSIZE
+		ld	a,d
+	.readloop:
+		cpi
+		jr	nz,.bad
+		jp	pe,.readloop
+
+		or	a	; clear carry flag
 		ret
-	.noerror:
-	; 	cp	$3C				; match a particular page
-	; 	jr	nz,.noerror2				; only error on specific page
-	; 	ld	e,00000101b			; report an error
-	; 	ex	af,af'
-	; 	scf					; and set the carry flag
-	; 	ret
-	; .noerror2
-		ex	af,af'
+	.bad:	scf
 		ret
-.endif
+
+spt_check_7bit_vram:
+		ret	nc				; if carry flag is not set, do nothing
+		ld	a,01000000b
+		cp	e
+		jr	z,.scantests
+		scf					; something other than bit 6 is bad, so this is not 7bit VRAM
+		ret
+	.scantests:
+		SPTHREAD_ENTER
+		dw spt_check_vram_contents, $0040
+		dw spt_jp_c, .exit
+		dw spt_check_vram_contents, $FFBF
+		dw spt_jp_c, .exit
+		dw spt_check_vram_contents, $AAAA
+		dw spt_jp_c, .exit
+		dw spt_check_vram_contents, $5555
+		dw spt_jp_c, .exit
+	.exit:	dw spt_exit				; if carry flag is set, this is not good 7-bit VRAM
+
+
+spt_sim_error:
+		pop	de
+		scf
+		ret
+
 
 ; test if the error is $FF (all bits bad)
 spt_jp_all_bits_bad:
@@ -243,7 +233,7 @@ spt_next_test:	pop	hl				; get the address to jump to if we are starting over
 
 spt_announcetest:
 		; pop	hl				; get the message to be printed
-		spthread_enter
+		SPTHREAD_ENTER
 
 		dw con_NL
 		dw spt_ld_hl_tp_label
@@ -254,13 +244,13 @@ spt_announcetest:
 
 
 spt_play_testresult:
-		spthread_save				; save the stack pointer
+		SPTHREAD_SAVE				; save the stack pointer
 
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw spt_ld_hl_tp_notes			; play the ID tune for current bank
 		dw playmusic
 		dw spt_pause, $2000
-		spthread_end
+		SPTHREAD_END
 
 		ld	a,$FF
 		cp	e
@@ -279,28 +269,28 @@ spt_play_testresult:
 	.zero:
 		ld	hl,tones_bitgood
 	.msbe_cont:
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw playmusic
 		dw spt_pause, $2000
-		spthread_end
+		SPTHREAD_END
 
 		; pause $4000
 		dec	d
 		jr	nz,.showbit
 		jr	.done
 	.allbad:
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw spt_playmusic, tones_bytebad
 		dw spt_pause, $8000
-		spthread_end
+		SPTHREAD_END
 		jr	.done
 	.allgood:
-		spthread_begin
+		SPTHREAD_BEGIN
 		dw spt_playmusic, tones_bytegood
 		dw spt_pause, $8000
-		spthread_end
+		SPTHREAD_END
 	.done:
-		spthread_restore			; restore the stack pointer
+		SPTHREAD_RESTORE			; restore the stack pointer
 		ret
 
 
@@ -336,30 +326,36 @@ print_biterrs:
 
 
 
-spt_chartest:
-		ld	hl,VBASE
-		ld	bc,VSIZE
-		jp	do_charset
-
-spt_charset_here:
+spt_print_charset:
 		ld	a,ixh
 		ld	h,a
 		ld	a,ixl
 		ld	l,a
-		ld	bc,$100
-do_charset:
 		ld	a,0
+		SPTHREAD_ENTER
+		MAC_SPT_CON_GOTO 9,24
+		dw spt_con_print, msg_charset		; show a copy of the character set
+		MAC_SPT_CON_GOTO 10,0
+		dw spt_ld_bc, $100
+		dw do_charset_ix
+		dw spt_exit
+
+spt_chartest:
+		ld	ix,VBASE
+		ld	bc,VSIZE
+		ld	a,0
+do_charset_ix:
 	.charloop:
-		ld	(hl),a	; copy A to byte pointed by HL
-		inc	a	; increments A
-		cpi		; increments HL, decrements BC (and does a CP)
+		ld	(ix+0),a	; copy A to byte pointed by HL
+		inc	a		; increments A
+		inc	ix
+		cpi			; increments HL, decrements BC (and does a CP)
 		jp	pe, .charloop
 		ret
 
-
 include "inc/spt.asm"
 include "inc/memtestmarch.asm"
-include "inc/trs80con.asm"
+include "inc/trs80m13con.asm"
 include "inc/trs80music.asm"
 
 label_vram:	dbz " 1K VRAM 3C00-3FFF "
@@ -368,13 +364,13 @@ label_dram16k1:	dbz "16K DRAM 4000-7FFF "
 label_dram16k2:	dbz "16K DRAM 8000-BFFF "
 label_dram16k3:	dbz "16K DRAM C000-FFFF "
 
-; vramstackmsg:	dbz "STACK IN VRAM ->"
 msg_banner:	dbz "TRS-80 M1/M3 TEST ROM -- FRANK IZ8DWF / DAVE KI3V / ADRIAN BLACK"
 msg_charset:	dbz "-CHARACTER SET-"
+; msg_testing:	db " ", " "+$80, "t"+$80, "e"+$80, "s"+$80, "t"+$80, " "+$80, "  ", 0
 msg_testing:	dbz "..TEST.. "
 msg_testok:	dbz "---OK--- "
 msg_biterrs:	dbz "BIT ERRS "
-msg_ok7bit:	dbz "OK! (7-BIT)"
+msg_ok7bit:	dbz "OK! (7-BIT MODEL 1)"
 msg_ok8bit:	dbz "OK! (8-BIT)"
 msg_banktest:	dbz "TESTING BANK SIZE  "
 

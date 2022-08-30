@@ -1,7 +1,7 @@
 # This Makefile requires GNU Make or equivalent.
 include os.mk
 
-TARGET = trs80m13diag 
+TARGET = trs80m2diag trs80m13diag 
 ASMFILES = $(TARGET:%=%.asm)
 CIMFILES = $(TARGET:%=%.cim)
 BDSFILES = $(TARGET:%=%.bds)
@@ -9,7 +9,8 @@ BINFILES = $(TARGET:%=%.bin)
 HEXFILES = $(TARGET:%=%.hex)
 
 all: $(BINFILES)
-trs80m13diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80con.asm inc/trs80music.asm Makefile os.mk
+trs80m13diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m13con.asm inc/trs80music.asm Makefile os.mk
+trs80m2diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m2con.asm Makefile os.mk
 
 .PHONY: clean realclean
 clean: 
@@ -34,23 +35,30 @@ $(BDSFILES): %.bds: %.bin
 
 
 .PHONY: emu 
-# emu: $(TARGET:%=%.emu)
 
 MODEL = -m3
-MEM = 32
-SIMFLAGS = $(MODEL) -mem $(MEM)
+# MEM = 32
+EMUFLAGS = $(MODEL) $(foreach m,$(MEM),-mem $(m))
 
-emu: trs80m13diag.emu
-emu1 emu1l emu3: emu
+emu emu1 emu1l emu3 emu4: trs80m13diag.emu
+emu2 emu12 emu16 emu6k: trs80m2diag.emu
 
 emu1: MODEL = -m1 -nlc -nld
 emu1l: MODEL = -m1
 emu3: MODEL = -m3
+emu2: MODEL = -m2
+emu12: MODEL = -m12
+emu16: MODEL = -m16
+emu6k: MODEL = -m6000
+emu4: MODEL = -m4
+emu4p: MODEL = -m4p
+emu4d: MODEL = -m4d
+
 
 BREAKFLAGS=$(foreach brk,$(B),-b $(brk))
 
 %.emu: %.bds %.bin
-	$(EMU) -vol 20 -rand $(SIMFLAGS) $(BREAKFLAGS) -rom $(abspath $*.bin) -ls $(abspath $*.bds)
+	$(EMU) -ee -vol 20 -rand $(EMUFLAGS) $(BREAKFLAGS) -rom $*.bin -ls $*.bds $(E)
 
 .DEFAULT: all
 .PHONY: all
