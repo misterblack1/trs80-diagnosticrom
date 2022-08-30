@@ -99,6 +99,8 @@ In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk
 
 # Running this diagnostic ROM on a TRS-80 Model I or Model III
 
+The Diagnostic ROM is less than 2K in size, so it will fit completely within a 2716.
+
 To use this diagnostic ROM on a TRS-80 Model III, you must first make or buy an adapter to allow use of an EPROM in the U104 ROM socket. This socket is designed for a 2364 which does not have a compatible pinout with a 2764 EPROM. Adapter PCBs are widely available on the usual sources, or you can make some PCBs at this link:
 
 [PCBway Project Link for EPROM adapter](https://www.pcbway.com/project/shareproject/Adapter_2364___27128__by_Bobbel_.html)
@@ -107,7 +109,9 @@ The assembled ROM, ready to be burned to EPROM or EEPROM, is `trs80testrom.bin` 
 
 One you have a programmed 2764 or 28B64C, insert that into the adapter and install it into U104 on the Model III. This is the boot ROM that the CPU starts to execute code from at power-up.  (Address `$0000`)
   
-On a TRS-80 Model I with Level II ROM upgrade, the main boot rom is the left most chip. On the Model I, the main ROM is a 2332 ROM chip, so a 2732 should work in place of it. _(Unconfirmed and untested.)_ Adrian used his 2364 to 2764 adapter in this socket and it mostly worked after he wrote the ROM into the top half of the 28B64 due to one address line being tied to VCC. (Load the ROM image into address `$1000` in your EPROM software before writing, so it is mapped to `$0000` on the Model I.)
+On a TRS-80 Model I, you can install the 2716 chip right into the motherboard in left-most socket. This is the same socket the Level II ROM expansion ribbon cable connects to and is the method we recommend you use. 
+
+You can also install the ROM into the Level II ROM upgrade board on the keyboard side, but the layout of these ROM chips can vary depending on revision of the upgrade. You must install the 2364 adapter or possibly a 2732 into the socket containing the primary boot ROM. If using the 2364 to 2764 adapter in this socket, you will need to load the ROM image into `$1000` due to one address line being tied to VCC. 
   
 - The beep codes for bit errors are as follows:
 	- First a long middle tone is played:
@@ -131,6 +135,10 @@ On a TRS-80 Model I with Level II ROM upgrade, the main boot rom is the left mos
 The CRT on the Model II (and all of the "Big Tandy" machines that use a 6845 CRT Controller chip) and could be damaged if they are powered on and run without a valid signal from the video controller board.  It is ***imperative*** that you are careful to connect all of the video-related cables properly.  Also, while we have tested this ROM to program the CRTC correctly, if your EPROM chip is not programmed successfully or not inserted into the ROM socket correctly such that no ROM code runs, the video board will not output any video signal.  Even if you are sure everything has been prepared correctly, make sure you are ready to cut power if you hear strange sounds from the CRT or anything doesn't seem right.  The technial manuals suggest that you have roughly ***3 seconds*** to cut power before there is risk of damage to the CRT.
 
 Do note: this code currently depends on proper operation of the FDC.  Specifically it awaits proper responses from the FDC while it toggles the activity light and head loading solenoid on and off.  In the near future this will be modified to wait appropriate time periods, but not to rely on the data read from the locations where the FDC status registers should be. During testing, even without the FDC installed, the diagnostics ran properly, likely due to the response bit being 0 when read back even with the controller removed. It may not work this way on all systems, as the data bus will be floating during this read operation and results can be erratic. 
+
+The ROM image fits into a 2716, so it is easiest to use one and install that into the single ROM socket on the CPU board. Alternatively, you can use the 2364 to 2764 adapter mentioned above, but as with the TRS-80 Model 1, you must load the ROM into `$1000` when programming. 
+
+As soon as you power on the machine, you should hear the floppy drive clicking, even before the CRT warms up, so you know the diagnostic code is running.
 
 _This section to be completed._
 
