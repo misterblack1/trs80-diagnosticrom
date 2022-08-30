@@ -26,12 +26,13 @@ Please know that the main goal of this ROM is to test the functionality of the v
 You should familiarize yourself with the system schematics and design of the TRS-80 before using this ROM since problems in other areas of the system can sometimes manifest themselves of a RAM problem. 
 
 Videos:
-- [Model III, Part 1](https://youtu.be/EGFKjjlvKf4)
-- [Model III, Part 2](https://youtu.be/Hh8dRgtu1Jk)
-- [Model III, Companion Video (ROM deep dive)](https://youtu.be/4fuuyLiSgsE)
-- Model II, Companion Video (coming soon)
+- [Model III Reoair, Part 1](https://youtu.be/EGFKjjlvKf4)
+- [Model III Repair, Part 2](https://youtu.be/Hh8dRgtu1Jk)
+- [Model III, Diagnostic ROM Companion Video](https://youtu.be/4fuuyLiSgsE)
+- Model II, Diagnostic ROM test (coming soon)
+- Model 1 Repair and VRAM upgrade, Part 1 (coming soon)
 
-In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
+In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk/tape based tests use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
 ## Feature List
 
@@ -45,11 +46,12 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 		- Officially, a machine with a 4K bank can only have 4K total, so this ROM does not test beyond the first bank in that case.
 	- Testing up to 48k of DRAM, looping continually.
 - One ROM image for **TRS-80 Model II** with all DRAM sizes.
-	- The same image is expected to work with the Model 12, 16, or 6000, although this is not tested.
+	- The same image is expected to work with the Model 12, 16, 16B or 6000, although this is not tested.
+	- Testing full 2K of VRAM
 	- Testing up to 512k of DRAM, looping continually.
 	- Temporarily relocates the test subroutine into previously tested RAM at `$4000` and unmaps the ROM from Z80 address space to test the RAM between `$0000` and `$3FFF`.
-		- The stock ROM does not test the region of DRAM from `$0000`-`$0FFF` that is hidden while the ROM is mapped.
-- All ROM images fit within 2K so the ROM can be used on any machine in the range
+		- The stock BOOT ROM does not test the region of DRAM from `$0000`-`$0FFF` that is hidden while the ROM is mapped. It also does not test any RAM above 32k -- so any faults in the untested parts of RAM will go undetected. This ROM tests 100% of the DRAM.
+- All ROM images fit within 2K so the ROM can be used on any machine in the range using a normal 2716 EPROM.
 
 
 ## Future improvements
@@ -63,10 +65,10 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 # What the ROM does
 
 - Makes sounds to let you know the ROM is running even if the display is not operating properly:
-	- On the Model I/III:
+	- On the Model 1/III:
 		- Makes a beep from the cassette port (so you can know the system is executing the ROM.)
 	- On the Model II:
-		- Accesses the built-in floppy drive three times.  The activity light should activate and the head solenoid should click.
+		- Accesses the built-in floppy drive three times.  The activity light should activate and the head solenoid should click. (See Model II video above to see this in operation.)
 - Set the system to 64 or 80 column mode depending on the machine.
 - Tests the video RAM using a March C test.
 	- On the Model I/III:
@@ -80,10 +82,11 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 - Clears screen and writes a welcome message.
 - On the Model I/III:
 	- If the first bank of DRAM only has 4K:
-		- Tests that first bank of 4k repeatedly.
+		- Tests that first bank of 4k repeatedly. These systems cannot have more than 4K of RAM, so nothing above 4K is tested.
 	- If the first bank of DRAM is 16k:
 		- Tests all three DRAM banks (48K) repeatedly.  Missing banks (e.g., for a 16K or 32K machine) will be listed with all bits in error (`76543210`).
 	- After each test, the diagnostic will play a good bank or bad bank tune. If a bad bank exists, it will beep out which bits are bad and print this to screen.
+	- It is possible to run the diagnostic ROM with NO DRAM installed at all. It will still work properly.
 - The Model II can (theoretically) have up to 512K of DRAM:
 	- The first 32K of DRAM (from `$0000` to `$7FFF`) is always present, but at boot time, the ROM is mapped in and makes the RAM from `$0000` to `$0FFF` inaccessible.
 		- The diagnostic first tests the second physical bank of DRAM located at `$4000-$7FFF`.  
@@ -91,6 +94,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROMs on various s
 				- The relocated copy unmaps the ROM, exposing all of RAM from `$0000` to `$3FFF`, which it then tests.  Afterwards, it re-maps the ROM to appear at `$0000` again, and hands control back to the ROM.
 			- If the bank at `$4000-$7FFF` fails testing, the ROM skips the test of DRAM from `$0000` to `$3FFF`.
 		- Then the diagnostic tests all possible DRAM pages (`$0-$F`), bank-switching them in turn into the region `$8000-$FFFF`.
+		- It is possible to run the diagnostic with NO DRAM installed at all. It will still work properly. 
 
 
 # Running this diagnostic ROM on a TRS-80 Model I or Model III
@@ -124,9 +128,9 @@ On a TRS-80 Model I with Level II ROM upgrade, the main boot rom is the left mos
 
 ***WARNING***: **You use this ROM (or really, do any troubleshooting inside a Model II or its derivatives) at your own risk!*** 
 
-The CRT on the Model II (and all of the "Big Tandy" machines that use a 6845 CRT Controller chip) are susceptible to damage if they are powered on and run without a valid signal from the video controller board.  It is ***imperative*** that you are careful to connect all of the video-related cables properly.  Also, while we have tested this ROM to program the CRTC correctly, if your EPROM chip is not programmed successfully or not inserted into the ROM socket correctly such that no ROM code runs, your CRT may be damaged!  Even if you are sure everything has been prepared correctly, make sure you are ready to cut power if you hear strange sounds from the CRT or anything doesn't seem right.  The technial manuals suggest that you have roughly ***3 seconds*** to cut power before there is risk of damage to the CRT.
+The CRT on the Model II (and all of the "Big Tandy" machines that use a 6845 CRT Controller chip) and could be damaged if they are powered on and run without a valid signal from the video controller board.  It is ***imperative*** that you are careful to connect all of the video-related cables properly.  Also, while we have tested this ROM to program the CRTC correctly, if your EPROM chip is not programmed successfully or not inserted into the ROM socket correctly such that no ROM code runs, the video board will not output any video signal.  Even if you are sure everything has been prepared correctly, make sure you are ready to cut power if you hear strange sounds from the CRT or anything doesn't seem right.  The technial manuals suggest that you have roughly ***3 seconds*** to cut power before there is risk of damage to the CRT.
 
-Do note: this code currently depends on proper operation of the FDC.  Specifically it awaits proper responses from the FDC while it toggles the activity light and head loading solenoid on and off.  In the near future this will be modified to wait appropriate time periods, but not to rely on the data read from the locations where the FDC status registers should be.
+Do note: this code currently depends on proper operation of the FDC.  Specifically it awaits proper responses from the FDC while it toggles the activity light and head loading solenoid on and off.  In the near future this will be modified to wait appropriate time periods, but not to rely on the data read from the locations where the FDC status registers should be. During testing, even without the FDC installed, the diagnostics ran properly, likely due to the response bit being 0 when read back even with the controller removed. It may not work this way on all systems, as the data bus will be floating during this read operation and results can be erratic. 
 
 _This section to be completed._
 
