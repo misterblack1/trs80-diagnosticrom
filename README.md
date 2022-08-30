@@ -2,15 +2,15 @@
 
 Model I with 4K:
 
-![Normal Operationm, M3 48K](documentation/M1_4k_animated.gif)
+![Normal Operation, M3 48K](documentation/M1_4k_animated.gif)
 
 Model III with 48K:
 
-![Normal Operationm, M1 4K](documentation/M3_48k_animated.gif)
+![Normal Operation, M1 4K](documentation/M3_48k_animated.gif)
 
 Model II with 128K:
 
-![Normal Operationm, M2 128K](documentation/M2_128k_animated.gif)
+![Normal Operation, M2 128K](documentation/M2_128k_animated.gif)
 
 #### Main contributors:
 - Dave Giller KI3V - Programmer and designer
@@ -26,9 +26,10 @@ Please know that the main goal of this ROM is to test the functionality of the v
 You should familiarize yourself with the system schematics and design of the TRS-80 before using this ROM since problems in other areas of the system can sometimes manifest themselves of a RAM problem. 
 
 Videos:
-- [Part 1](https://youtu.be/EGFKjjlvKf4)
-- [Part 2](https://youtu.be/Hh8dRgtu1Jk)
-- [Companion Video (ROM deep dive)](https://youtu.be/4fuuyLiSgsE)
+- [Model III, Part 1](https://youtu.be/EGFKjjlvKf4)
+- [Model III, Part 2](https://youtu.be/Hh8dRgtu1Jk)
+- [Model III, Companion Video (ROM deep dive)](https://youtu.be/4fuuyLiSgsE)
+- Model II, Companion Video (coming soon)
 
 In addition, most (all?) RAM tests contained inside diagnostic ROMs on various systems use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
