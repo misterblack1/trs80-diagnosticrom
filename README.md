@@ -125,6 +125,8 @@ On a TRS-80 Model I with Level II ROM upgrade, the main boot rom is the left mos
 
 The CRT on the Model II (and all of the "Big Tandy" machines that use a 6845 CRT Controller chip) are susceptible to damage if they are powered on and run without a valid signal from the video controller board.  It is ***imperative*** that you are careful to connect all of the video-related cables properly.  Also, while we have tested this ROM to program the CRTC correctly, if your EPROM chip is not programmed successfully or not inserted into the ROM socket correctly such that no ROM code runs, your CRT may be damaged!  Even if you are sure everything has been prepared correctly, make sure you are ready to cut power if you hear strange sounds from the CRT or anything doesn't seem right.  The technial manuals suggest that you have roughly ***3 seconds*** to cut power before there is risk of damage to the CRT.
 
+Do note: this code currently depends on proper operation of the FDC.  Specifically it awaits proper responses from the FDC while it toggles the activity light and head loading solenoid on and off.  In the near future this will be modified to wait appropriate time periods, but not to rely on the data read from the locations where the FDC status registers should be.
+
 _This section to be completed._
 
 ## Other troubleshooting notes
