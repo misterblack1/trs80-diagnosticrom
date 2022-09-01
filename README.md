@@ -126,7 +126,7 @@ You can also install the ROM into the Level II ROM upgrade board on the keyboard
 	- MID(long) MID(long) (pause) HI HI **low** HI **low** HI HI HI
 - If _only_ bit 6 of VRAM is bad, the diagnostic will further test to see if bit 6 is "faked" as the NOR of bits 5 and 7.  
 	- If it is, you will not hear a beep code because the ROM identifies this as the normal 7-bit VRAM in a stock Model I machine.
-	- If bit 6 of VRAM is not consistently the NOR of bits 5 and 6, the screen will be filled with copies of the character set, and the error will be repeatedly reported as tones (HI&nbsp;**low**&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI, identifying bad bit 6).
+	- If bit 6 of VRAM is not consistently the NOR of bits 5 and 7, the screen will be filled with copies of the character set, and the error will be repeatedly reported as tones (HI&nbsp;**low**&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI, identifying bad bit 6).
 
 # Running this diagnostic ROM on a TRS-80 Model II
 
