@@ -10,7 +10,7 @@ HEXFILES = $(TARGET:%=%.hex)
 
 all: $(BINFILES)
 trs80m13diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m13con.asm inc/trs80music.asm Makefile os.mk
-trs80m2diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m2con.asm Makefile os.mk
+trs80m2diag.bin: inc/z80.mac inc/spt.mac inc/spt.asm inc/memtestmarch.asm inc/trs80m2con.asm Makefile os.mk inc/trs80m2fdcboot.asm
 
 .PHONY: clean realclean
 clean: 
@@ -38,7 +38,7 @@ $(BDSFILES): %.bds: %.bin
 
 MODEL = -m3
 # MEM = 32
-EMUFLAGS = $(MODEL) $(foreach m,$(MEM),-mem $(m))
+EMUFLAGS = $(MODEL) $(foreach h,$(HD),-h $(h)) $(foreach m,$(MEM),-mem $(m))
 
 emu emu1 emu1l emu3 emu4: trs80m13diag.emu
 emu2 emu12 emu16 emu6k: trs80m2diag.emu
@@ -47,6 +47,7 @@ emu1: MODEL = -m1 -nlc -nld
 emu1l: MODEL = -m1
 emu3: MODEL = -m3
 emu2: MODEL = -m2
+emu2: HD = ~/w/trs80/trs80-hard-disk-0.hdv
 emu12: MODEL = -m12
 emu16: MODEL = -m16
 emu6k: MODEL = -m6000

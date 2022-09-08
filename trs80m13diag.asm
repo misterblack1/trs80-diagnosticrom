@@ -353,10 +353,6 @@ do_charset_ix:
 		jp	pe, .charloop
 		ret
 
-include "inc/spt.asm"
-include "inc/memtestmarch.asm"
-include "inc/trs80m13con.asm"
-include "inc/trs80music.asm"
 
 label_vram:	dbz " 1K VRAM 3C00-3FFF "
 label_dram4k:	dbz " 4K DRAM 4000-4FFF "
@@ -382,6 +378,14 @@ msg_banktest:	dbz "TESTING BANK SIZE  "
 ; 4. address of tones for identifying the test audibly
 tp_size		equ	8
 
+memtest_loadregs .macro
+		ld	c,(iy+0)
+		ld	b,(iy+1)
+		ld	l,(iy+2)
+		ld	h,(iy+3)
+.endm
+
+
 tp_vram:	dw	VSIZE, VBASE, label_vram, tones_vram
 tp_bank:	dw	$1000, $7000, msg_banktest, tones_id1
 
@@ -392,3 +396,9 @@ tp_16k:		dw	$4000, $4000, label_dram16k1, tones_id1
 
 tp_4k:		dw	$1000, $4000, label_dram4k, tones_id1
 		dw	$0000, tp_4k
+
+
+include "inc/spt.asm"
+include "inc/memtestmarch.asm"
+include "inc/trs80m13con.asm"
+include "inc/trs80music.asm"

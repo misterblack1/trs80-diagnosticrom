@@ -1,3 +1,4 @@
+; code: language=asm-collection tabSize=8
 ; Requirements:
 ; This function must be RELOCATABLE (only relative jumps), and use NO RAM or STACK.
 ; These restrictions lead to somewhat long-winded, repetative code.
@@ -19,29 +20,22 @@
 ; destroys: a,bc,d,hl
 ; preserves: ix
 
-_loadregs .macro
-		ld	c,(iy+0)
-		ld	b,(iy+1)
-		ld	l,(iy+2)
-		ld	h,(iy+3)
-.endm
-
 memtestmarch:
 		ld	e,0			; reset error accumulator
 		ld	d,0			; set the first testing value to 0
 	mtm1:
-		_loadregs
+		memtest_loadregs
 	mtm1loop:				; fill initial value upwards
 		ld	(hl),d
 		inc	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become -1 ($FFFF)
+		xor	a			; keep going so long as bc doesn't become 0
 		cp	b
 		jr	nz,mtm1loop		; not $FF, keep going
 		cp	c
 		jr	nz,mtm1loop		; not $FF, keep going
 	mtm2:					; read value, write complement upwards
-		_loadregs
+		memtest_loadregs
 	mtm2loop:
 		ld	a,(hl)
 		cp	d			; compare to value
@@ -57,14 +51,14 @@ memtestmarch:
 		ld	(hl),a			; write the complement
 		inc	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become -1 ($FFFF)
+		xor	a			; keep going so long as bc doesn't become 0
 		cp	b
 		jr	nz,mtm2loop		; not $FF, keep going
 		cp	c
 		jr	nz,mtm2loop		; not $FF, keep going
 		
 	mtm3:					; read complement, write original value upwards
-		_loadregs
+		memtest_loadregs
 	mtm3loop:
 		ld	a,(hl)
 		cpl
@@ -78,10 +72,9 @@ memtestmarch:
 		ld	a,d			; reload a with correct value
 	mtm3cont:
 		ld	(hl),d			; fill with test value
-		; ld	a,$FF			; keep going so long as bc doesn't become -1 ($FFFF)
 		inc	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become -1 ($FFFF)
+		xor	a			; keep going so long as bc doesn't become 0
 		cp	b
 		jr	nz,mtm3loop		; not $FF, keep going
 		cp	c
@@ -94,7 +87,7 @@ memtestmarch:
 		jr	mtm1
 
 	mtm4:					; read test value, write complement downwards
-		_loadregs
+		memtest_loadregs
 		add	hl,bc			; move to end of the test area
 		dec	hl
 	mtm4loop:
@@ -112,14 +105,14 @@ memtestmarch:
 		ld	(hl),a			; write complement
 		dec	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become -1 ($FFFF)
+		xor	a			; keep going so long as bc doesn't become 0
 		cp	b
 		jr	nz,mtm4loop		; not $FF, keep going
 		cp	c
 		jr	nz,mtm4loop		; not $FF, keep going
 
 	mtm5:					; read complement, write value downwards
-		_loadregs
+		memtest_loadregs
 		add	hl,bc			; move to end of the test area
 		dec	hl
 	mtm5loop:
@@ -137,14 +130,14 @@ memtestmarch:
 		ld	(hl),d
 		dec	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become -1 ($FFFF)
+		xor	a			; keep going so long as bc doesn't become 0
 		cp	b
 		jr	nz,mtm5loop		; not $FF, keep going
 		cp	c
 		jr	nz,mtm5loop		; not $FF, keep going
 	
 	mtm6:					; final check that all are zero
-		_loadregs
+		memtest_loadregs
 		add	hl,bc			; move to end of the test area
 		dec	hl
 	mtm6loop:
@@ -160,7 +153,7 @@ memtestmarch:
 	mtm6cont:
 		dec	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become -1 ($FFFF)
+		xor	a			; keep going so long as bc doesn't become 0
 		cp	b
 		jr	nz,mtm6loop		; not $FF, keep going
 		cp	c

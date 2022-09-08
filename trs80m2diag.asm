@@ -67,15 +67,8 @@ init_crtc:
 
 test_vram:
 		SPTHREAD_BEGIN				; set up to begin running threaded code
-		dw spt_chartest				; the VRAM tests bad.  Report and loop
+		; dw spt_chartest				; the VRAM tests bad.  Report and loop
 
-		dw fdc_reset_head
-		dw spt_pause,$0000
-		dw fdc_reset_head
-		dw spt_pause,$0000
-		dw fdc_reset_head
-
-		; dw spt_playmusic, tones_welcome
 		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
 		; dw spt_sim_error,$F0
@@ -83,40 +76,39 @@ test_vram:
 
 		dw spt_chartest				; the VRAM tests bad.  Report and loop
 	.vrambadloop:
-		; dw spt_play_testresult
-		; dw spt_pause, $FFFF
-		; rept 8
-		; 	dw m2_blink_bit
-		; endm
 		dw m2_blink_biterrs
 		dw spt_jp, .vrambadloop
 
 
 	.vramok:
 		dw con_clear
+		dw spt_con_index,9
 		dw spt_con_print, msg_banner		; print the banner
 		dw spt_print_charset
+
+		dw fdc_reset_head
+		dw spt_pause,$0000
+		dw fdc_deselect
+		dw spt_pause,$0000
+		dw fdc_reset_head
+		dw spt_pause,$0000
+		dw fdc_deselect
 
 		dw spt_select_test, tp_vram
 		dw spt_announcetest 			; print results of VRAM tst
 		dw spt_con_print, msg_testok
-
-	; .play_vramgood:
-	; 	dw spt_playmusic, tones_vramgood	; play the VRAM good tones
-	; .vram_continue:
 
 	.start:	
 		dw spt_select_test, tp_rdest		; load the test parameters
 		dw spt_announcetest 			; announce what test we are about to run
 		dw spt_tp_map_bank			; map in the bank to test (this unmaps VRAM)
 		dw memtestmarch				; test the current bank
-		dw vram_map				; map in VRAM so we can print results
-		; dw spt_sim_error, $C0
-		dw spt_jp_nc, .rdestok
 
 SPT_SKIP_NMIVEC
 
-		; dw spt_con_print, msg_biterrs		; we have errors in the rdest bank
+		dw vram_map				; map in VRAM so we can print results
+		; dw spt_sim_error, $C0
+		dw spt_jp_nc, .rdestok
 		dw print_errsmsg
 		dw print_biterrs
 
@@ -140,16 +132,13 @@ SPT_SKIP_NMIVEC
 		; dw spt_sim_error, $C0
 		dw spt_jp_nc, .zerook
 		
-		; dw spt_con_print, msg_biterrs		; we have errors: print the bit string
 		dw print_errsmsg
 		dw print_biterrs
-		; dw spt_play_testresult			; play the tones for bit errors
 		dw spt_jp, .table
 
 
 	.zerook:
 		dw spt_con_print, msg_testok		; bank is good: print the OK message
-		; dw spt_play_testresult			; play the tones
 
 	.table:	dw spt_select_test, tp_high			; load the test table
 
@@ -159,21 +148,15 @@ SPT_SKIP_NMIVEC
 		dw vram_map
 		dw spt_jp_nc, .ok
 		
-		; dw spt_con_print, msg_biterrs		; we have errors: print the bit string
 		dw print_errsmsg
 		dw print_biterrs
-		; dw spt_play_testresult			; play the tones for bit errors
 		dw spt_jp, .cont
 	
 	.ok:	dw spt_con_print, msg_testok		; bank is good: print the OK message
-		; dw spt_play_testresult			; play the tones
 
 	.cont:
 		dw spt_next_test, .start
 		dw spt_jp, .tloop
-; 		SPTHREAD_END
-
-; halthalt:	jr halthalt
 
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
@@ -225,36 +208,40 @@ fdc_cmd_force_int_ready		equ	$01
 
 
 fdc_terminate_cmd:
-		; push	bc
+		ld	c,0
 	.start:	ld	a,fdc_cmd_force_int+fdc_cmd_force_int_immediate
 		out	(fdc_reg_cmd),a
 		ld	a,fdc_cmd_force_int
 		out	(fdc_reg_cmd),a
 
-		ld	b,18
+		ld	b,11
 	.delay:	djnz	.delay
 
-		in	a,(fdc_reg_data)	; to reset DRQ, presumably
+		in	a,(fdc_reg_data)		; to reset DRQ, presumably
 		in	a,(fdc_reg_status)
-		; pop	bc
+
+		bit	7,a
+		ret	z				; return if ready
+
+		dec	c
+		jr	nz,.start
 		ret
 
-fdc_wait_ready:
-		SPTHREAD_ENTER
-	.term:	dw fdc_terminate_cmd
-		dw fdc_jp_notready,.term
-		ret
-
-fdc_reset_head:
+fdc_select_d0s0:
 		ld	a,fdc_select_s0|fdc_select_d0	; select d0s0
 		out	(fdc_reg_select),a
+		ld	b,0				; short delay for FDC to respond
+	.dly1:	djnz	.dly1
+		ret
 
-		SPTHREAD_ENTER
-	.term:	dw fdc_terminate_cmd			; reset FDC
-		dw fdc_jp_notready,.term
-		SPTHREAD_LEAVE
+fdc_deselect:
+		ld	a,fdc_select_none		; deselect the drive
+		out	(fdc_reg_select),a
+		ret
 
-		ld	c,5				; step inward 5 tracks
+fdc_step_in:
+		pop	bc				; how many tracks (only C is significant)
+
 	.silp:	ld	a,fdc_cmd_step_in|fdc_cmd_update_track|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
 		out	(fdc_reg_cmd),a
 
@@ -267,7 +254,9 @@ fdc_reset_head:
 	
 		dec	c
 		jr	nz,.silp			; repeate the stepping
-	
+		ret
+
+fdc_head_restore:
 		ld	a,fdc_cmd_restore|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
 		out	(fdc_reg_cmd),a			; restore head to track zero
 
@@ -277,30 +266,23 @@ fdc_reset_head:
 	.wrdy2:	in	a,(fdc_reg_status)		; wait for ready indication
 		bit	0,a
 		jr	nz,.wrdy2
-
-		SPTHREAD_ENTER
-		dw spt_pause,$0000
-		SPTHREAD_LEAVE
-
-		ld	a,fdc_select_none		; deselect the drive
-		out	(fdc_reg_select),a
-
 		ret
 
-
-
-
+fdc_reset_head:
+		SPTHREAD_ENTER
+		dw fdc_select_d0s0
+	.term:	dw fdc_terminate_cmd			; reset FDC
+		; dw fdc_jp_notready,.term
+		dw fdc_step_in,5
+		dw fdc_head_restore
+		dw spt_exit
 
 
 m2_drivelight_off:
-		; ld	a,' '
-		; ld	(VBASE),a
 		ld	a,$4F
 		jr	m2_drivelight_set
 
 m2_drivelight_on:
-		; ld	a,' '+$80
-		; ld	(VBASE),a
 		ld	a,$4E
 m2_drivelight_set:
 		out	($EF),a
@@ -362,49 +344,48 @@ spt_jp_e_ff:
 		ld	sp,hl				; else jump to the requested location
 		ret
 
-fdc_jp_notready:
-spt_jp_a7_nz:
-		pop	hl				; get the address for jumping if match
-		bit	7,a				; test bit 7
-		ret	z				; return without jump if there is NOT a match
-		ld	sp,hl				; else jump to the requested location
-		ret
+; fdc_jp_notready:
+; spt_jp_a7_nz:
+; 		pop	hl				; get the address for jumping if match
+; 		bit	7,a				; test bit 7
+; 		ret	z				; return without jump if there is NOT a match
+; 		ld	sp,hl				; else jump to the requested location
+; 		ret
 
 
 ; load the label string address from the current test parameter table entry into hl
 spt_ld_hl_tp_label:
-		ld	l,(iy+8)
-		ld	h,(iy+9)
+		; ld	l,(iy+TP_LABEL)
+		; ld	h,(iy+TP_LABEL+1)
+		ld	c,(iy+TP_LABEL)
+		ld	b,0
+		ld	hl,labels_start
+		add	hl,bc
 		ret
 
 spt_ld_hl_tp_base:
-		ld	l,(iy+2)
-		ld	h,(iy+3)
+		; ld	l,(iy+TP_BASE)
+		; ld	h,(iy+TP_BASE+1)
+		ld	h,(iy+TP_BASE)
+		ld	l,0
 		ret
 
 spt_ld_bc_tp_size:
-		ld	c,(iy+0)
-		ld	b,(iy+1)
+		; ld	c,(iy+TP_SIZE)
+		; ld	b,(iy+TP_SIZE+1)
+		ld	b,(iy+TP_SIZE)
+		ld	c,0
 		ret
 
 spt_ld_a_tp_bank:
-		ld	a,(iy+4)
+		; ld	a,(iy+TP_BANK+1)
+		ld	a,(iy+TP_BANK)
 		ret
 
-; ; load the label string address from the current test parameter table entry into hl
-; spt_ld_hl_tp_notes:
-; 		ld	l,(iy+8)
-; 		ld	h,(iy+9)
-; 		ret
-
-; spt_map_bank:
-; 		pop	hl
-; 		ld	a,l
-; 		out	($FF),a
-; 		ret
 
 spt_tp_map_bank:
-		ld	a,(iy+4)
+		; ld	a,(iy+TP_BANK+1)
+		ld	a,(iy+TP_BANK)
 		cp	0				; special case: when we say bank 0, we really mean 1
 		jr	nz,.send
 		ld	a,1				; substitute a 1 when actually banking 0
@@ -413,21 +394,28 @@ spt_tp_map_bank:
 		ret
 
 spt_tp_goto:
-		ld	a,(iy+6)
+		ld	a,(iy+TP_POS)
 		ld	ixl,a
-		ld	a,(iy+7)
+		ld	a,(iy+TP_POS+1)
 		ld	ixh,a
 		ret
 
 ; move to the next test parameter table entry
 spt_next_test:	pop	hl				; get the address to jump to if we are starting over
-		ld 	bc,tp_size			; find the next entry
+		ld 	bc,tp_entrysize			; find the next entry
 		add 	iy,bc
-		ld	a,(iy+0)			; is the length zero?
-		or	(iy+1)
+		ld	a,(iy+TP_SIZE)			; is the length zero?
+		; or	(iy+TP_SIZE+1)
+		or	a
 		ret	nz				; no, use it
-		ld	c,(iy+2)			; yes, get the address of the first entry
-		ld	b,(iy+3)
+
+		ld	a,$80				; map the vram
+		out	($FF),a
+		; jp	floppy_boot
+		jp	boot_os
+
+		ld	c,(iy+TP_GOTO)			; yes, get the address of the first entry
+		ld	b,(iy+TP_GOTO+1)
 		ld	iy,0
 		add	iy,bc
 		; sub	a				; clear zero flag when restarting
@@ -485,7 +473,7 @@ spt_pause:
 ; pause by an amount specified in BC
 ; do_pause:
 		ex	af,af'
-	.loop:
+	.loop:							; pause by BC*50-5+14 t-states
 		nop12
 		nop12
 		dec	bc
@@ -498,17 +486,14 @@ spt_pause:
 
 print_errsmsg:
 		SPTHREAD_ENTER
-		dw spt_jp_e_ff,.missing
+		dw spt_jp_e_ff,.absent
 		dw spt_con_print,msg_biterrs
 		dw spt_exit
-	.missing:
+	.absent:
 		dw spt_con_print,msg_absent
 		dw spt_exit
 
 print_biterrs:
-		; SPTHREAD_ENTER
-		; dw print_errsmsg
-		; SPTHREAD_LEAVE
 		ld	a,'7'
 		ld	b,8
 	.showbit:
@@ -597,22 +582,17 @@ do_charset_ix:
 		ret
 
 
-include "inc/spt.asm"
-include "inc/memtestmarch.asm"
-include "inc/trs80m2con.asm"
-; include "inc/trs80m2music.asm"
-
 V_END = (VBASE+VSIZE-1)
 
 
-
+labels_start:
 label_vram:	dbz " 2K VRAM "
 label_dram16:	dbz "16K DRAM "
 label_bank16:	dbz "16K page "
 
 msg_dash:	dbz "-"
 msg_space:	dbz " "
-msg_banner:	dbz "         TRS-80 M2 Test ROM - Frank IZ8DWF / Dave KI3V / Adrian Black"
+msg_banner:	dbz "TRS-80 M2 Test ROM - Frank IZ8DWF / Dave KI3V / Adrian Black"
 msg_charset:	dbz "charset:"
 ; msg_testing:	dbz "..test.. "
 ; msg_testok:	dbz "---OK--- "
@@ -632,47 +612,98 @@ status_backup equ $-msg_testing-1
 ; 3. bank to map before test
 ; 4. location in screen memory to start printing test data
 ; 5. address of string for announcing test
-tp_size		equ	10
+; tp_entrysize equ 10
+tp_entrysize equ tp_low-tp_vram
 
 COL1 = 2
 COL2 = (COL1+40)
 
-tp_vram:	dw	VSIZE, VBASE, $0, VBASE+( 2*VLINE)+COL1, label_vram
+TP_SIZE equ 0
+TP_BASE equ 1
+TP_BANK equ 2
+TP_LABEL equ 3
+TP_POS equ 4
+TP_GOTO equ 1
 
-tp_low:		dw	$4000, $0000, $0, VBASE+( 3*VLINE)+COL1, label_dram16
-tp_rdest:	dw	$4000, $4000, $0, VBASE+( 4*VLINE)+COL1, label_dram16
+memtest_loadregs .macro
+		xor	a
+		ld	b,(iy+0)
+		ld	c,a
+		ld	h,(iy+1)
+		ld	l,a
+.endm
 
-tp_high:	dw	$4000, $8000, $1, VBASE+( 5*VLINE)+COL1, label_bank16
-		dw	$4000, $C000, $1, VBASE+( 6*VLINE)+COL1, label_bank16
-		dw	$4000, $8000, $2, VBASE+( 7*VLINE)+COL1, label_bank16
-		dw	$4000, $C000, $2, VBASE+( 8*VLINE)+COL1, label_bank16
-		dw	$4000, $8000, $3, VBASE+( 9*VLINE)+COL1, label_bank16
-		dw	$4000, $C000, $3, VBASE+(10*VLINE)+COL1, label_bank16
-		dw	$4000, $8000, $4, VBASE+(11*VLINE)+COL1, label_bank16
-		dw	$4000, $C000, $4, VBASE+(12*VLINE)+COL1, label_bank16
-		dw	$4000, $8000, $5, VBASE+(13*VLINE)+COL1, label_bank16
-		dw	$4000, $C000, $5, VBASE+(14*VLINE)+COL1, label_bank16
-		dw	$4000, $8000, $6, VBASE+(15*VLINE)+COL1, label_bank16
-		dw	$4000, $C000, $6, VBASE+(16*VLINE)+COL1, label_bank16
-		dw	$4000, $8000, $7, VBASE+(17*VLINE)+COL1, label_bank16
-		dw	$4000, $C000, $7, VBASE+(18*VLINE)+COL1, label_bank16
-		dw	$4000, $8000, $8, VBASE+( 3*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $8, VBASE+( 4*VLINE)+COL2, label_bank16
-		dw	$4000, $8000, $9, VBASE+( 5*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $9, VBASE+( 6*VLINE)+COL2, label_bank16
-		dw	$4000, $8000, $A, VBASE+( 7*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $A, VBASE+( 8*VLINE)+COL2, label_bank16
-		dw	$4000, $8000, $B, VBASE+( 9*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $B, VBASE+(10*VLINE)+COL2, label_bank16
-		dw	$4000, $8000, $C, VBASE+(11*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $C, VBASE+(12*VLINE)+COL2, label_bank16
-		dw	$4000, $8000, $D, VBASE+(13*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $D, VBASE+(14*VLINE)+COL2, label_bank16
-		dw	$4000, $8000, $E, VBASE+(15*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $E, VBASE+(16*VLINE)+COL2, label_bank16
-		dw	$4000, $8000, $F, VBASE+(17*VLINE)+COL2, label_bank16
-		dw	$4000, $C000, $F, VBASE+(18*VLINE)+COL2, label_bank16
-		dw	$0000, tp_high
+
+tp_vram:	db	high VSIZE, high VBASE, $0, label_vram-labels_start
+		dw	VBASE+( 2*VLINE)+COL1
+
+tp_low:		db	$40, $00, $0, label_dram16-labels_start
+		dw	VBASE+( 3*VLINE)+COL1
+tp_rdest:	db	$40, $40, $0, label_dram16-labels_start
+		dw	VBASE+( 4*VLINE)+COL1
+
+tp_high:	db	$40, $80, $1, label_bank16-labels_start
+		dw	VBASE+( 5*VLINE)+COL1
+		db	$40, $C0, $1, label_bank16-labels_start
+		dw	VBASE+( 6*VLINE)+COL1
+		db	$40, $80, $2, label_bank16-labels_start
+		dw	VBASE+( 7*VLINE)+COL1
+		db	$40, $C0, $2, label_bank16-labels_start
+		dw	VBASE+( 8*VLINE)+COL1
+		db	$40, $80, $3, label_bank16-labels_start
+		dw	VBASE+( 9*VLINE)+COL1
+		db	$40, $C0, $3, label_bank16-labels_start
+		dw	VBASE+(10*VLINE)+COL1
+		db	$40, $80, $4, label_bank16-labels_start
+		dw	VBASE+(11*VLINE)+COL1
+		db	$40, $C0, $4, label_bank16-labels_start
+		dw	VBASE+(12*VLINE)+COL1
+		db	$40, $80, $5, label_bank16-labels_start
+		dw	VBASE+(13*VLINE)+COL1
+		db	$40, $C0, $5, label_bank16-labels_start
+		dw	VBASE+(14*VLINE)+COL1
+		db	$40, $80, $6, label_bank16-labels_start
+		dw	VBASE+(15*VLINE)+COL1
+		db	$40, $C0, $6, label_bank16-labels_start
+		dw	VBASE+(16*VLINE)+COL1
+		db	$40, $80, $7, label_bank16-labels_start
+		dw	VBASE+(17*VLINE)+COL1
+		db	$40, $C0, $7, label_bank16-labels_start
+		dw	VBASE+(18*VLINE)+COL1
+		db	$40, $80, $8, label_bank16-labels_start
+		dw	VBASE+( 3*VLINE)+COL2
+		db	$40, $C0, $8, label_bank16-labels_start
+		dw	VBASE+( 4*VLINE)+COL2
+		db	$40, $80, $9, label_bank16-labels_start
+		dw	VBASE+( 5*VLINE)+COL2
+		db	$40, $C0, $9, label_bank16-labels_start
+		dw	VBASE+( 6*VLINE)+COL2
+		db	$40, $80, $A, label_bank16-labels_start
+		dw	VBASE+( 7*VLINE)+COL2
+		db	$40, $C0, $A, label_bank16-labels_start
+		dw	VBASE+( 8*VLINE)+COL2
+		db	$40, $80, $B, label_bank16-labels_start
+		dw	VBASE+( 9*VLINE)+COL2
+		db	$40, $C0, $B, label_bank16-labels_start
+		dw	VBASE+(10*VLINE)+COL2
+		db	$40, $80, $C, label_bank16-labels_start
+		dw	VBASE+(11*VLINE)+COL2
+		db	$40, $C0, $C, label_bank16-labels_start
+		dw	VBASE+(12*VLINE)+COL2
+		db	$40, $80, $D, label_bank16-labels_start
+		dw	VBASE+(13*VLINE)+COL2
+		db	$40, $C0, $D, label_bank16-labels_start
+		dw	VBASE+(14*VLINE)+COL2
+		db	$40, $80, $E, label_bank16-labels_start
+		dw	VBASE+(15*VLINE)+COL2
+		db	$40, $C0, $E, label_bank16-labels_start
+		dw	VBASE+(16*VLINE)+COL2
+		db	$40, $80, $F, label_bank16-labels_start
+		dw	VBASE+(17*VLINE)+COL2
+		db	$40, $C0, $F, label_bank16-labels_start
+		dw	VBASE+(18*VLINE)+COL2
+		db	$00 
+		dw	tp_high
 
 
 
@@ -706,8 +737,7 @@ spt_relocated_test:
 		dw spt_unmap_rom
 		dw relocated_memtest
 		dw spt_map_rom
-		SPTHREAD_LEAVE
-		ret
+		dw spt_exit
 
 spt_unmap_rom:
 		xor	a
@@ -719,7 +749,8 @@ spt_map_rom:
 		out	($F9),a
 		ret
 
-tp_low_reloc:	dw	$4000, $0000, $0, VBASE+( 3*VLINE)+COL1, label_dram16
+tp_low_reloc:	db	$40, $00, $0, label_dram16-labels_start
+		dw 	VBASE+( 3*VLINE)+COL1
 
 
 
@@ -733,3 +764,10 @@ relocated_memtest equ $
 ; aka relocatable code in Z80 terminology.  We need this RAM copy while
 ; testing the RAM that is mapped behind the ROM at location $0000.)
 ; ----------------------------------------------------------------------------
+
+.include "inc/trs80m2fdcboot.asm"
+.include "inc/spt.asm"
+.include "inc/memtestmarch.asm"
+.include "inc/trs80m2con.asm"
+; include "inc/trs80m2music.asm"
+
