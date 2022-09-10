@@ -21,19 +21,36 @@
 ; preserves: ix
 
 memtestmarch:
-		ld	e,0			; reset error accumulator
-		ld	d,0			; set the first testing value to 0
+		xor	a
+		ld	e,a			; reset error accumulator
+		ld	d,a			; set the first testing value to 0
+
+	checkabsent:					; quick test for completely missing bank
+		memtest_ld_hl_base
+		ld	b,h
+		ld	c,1
+		cpl				; A := FF
+	.redo	ld	(hl),a			; write FF to base
+		cpl				; A := 0
+		ld	(bc),a			; write 00 to base+1
+		cp	(hl)			; compare to base (should be FF, should not match)
+		jr	z,.allbad		; if they match, all bits are bad, but double-check
+		cp	0			; are we on the first round?
+		jr	z,.redo			; yes, redo with reversed bits
+		jr	mtm1
+	.allbad:
+		ld	e,$FF			; report all bits bad
+		jr	mtm_done_bounce
+
 	mtm1:
 		memtest_loadregs
 	mtm1loop:				; fill initial value upwards
 		ld	(hl),d
 		inc	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become 0
-		cp	b
-		jr	nz,mtm1loop		; not $FF, keep going
-		cp	c
-		jr	nz,mtm1loop		; not $FF, keep going
+		ld	a,c
+		or	b
+		jr	nz,mtm1loop
 	mtm2:					; read value, write complement upwards
 		memtest_loadregs
 	mtm2loop:
@@ -43,19 +60,18 @@ memtestmarch:
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
-		cp	$FF			; if we have already found all bits bad
-		jr	z,mtm_done_bounce	; then quit
+		; ; cp	$FF
+		; inc	a
+		; jr	z,mtm_done_bounce	; quit early if all bits bad (a was $FF)
 		ld	a,d			; reload a with correct value
 	mtm2cont:
 		cpl				; take the complement
 		ld	(hl),a			; write the complement
 		inc	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become 0
-		cp	b
-		jr	nz,mtm2loop		; not $FF, keep going
-		cp	c
-		jr	nz,mtm2loop		; not $FF, keep going
+		ld	a,c
+		or	b
+		jr	nz,mtm2loop
 		
 	mtm3:					; read complement, write original value upwards
 		memtest_loadregs
@@ -67,18 +83,17 @@ memtestmarch:
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
-		cp	$FF			; if we have already found all bits bad
-		jr	z,mtm_done_bounce	; then quit
+		; ; cp	$FF
+		; inc	a
+		; jr	z,mtm_done_bounce	; quit early if all bits bad (a was $FF)
 		ld	a,d			; reload a with correct value
 	mtm3cont:
 		ld	(hl),d			; fill with test value
 		inc	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become 0
-		cp	b
-		jr	nz,mtm3loop		; not $FF, keep going
-		cp	c
-		jr	nz,mtm3loop		; not $FF, keep going
+		ld	a,c
+		or	b
+		jr	nz,mtm3loop
 		jr	mtm4
 	
 	mtm_done_bounce:
@@ -97,19 +112,18 @@ memtestmarch:
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
-		cp	$ff			; if we have already found all bits bad
-		jr	z,mtm_done		; then quit
+		; ; cp	$FF
+		; inc	a
+		; jr	z,mtm_done	; quit early if all bits bad (a was $FF)
 		ld	a,d			; reload a with correct value
 	mtm4cont:
 		cpl				; take the complement
 		ld	(hl),a			; write complement
 		dec	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become 0
-		cp	b
-		jr	nz,mtm4loop		; not $FF, keep going
-		cp	c
-		jr	nz,mtm4loop		; not $FF, keep going
+		ld	a,c
+		or	b
+		jr	nz,mtm4loop
 
 	mtm5:					; read complement, write value downwards
 		memtest_loadregs
@@ -123,18 +137,17 @@ memtestmarch:
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
-		cp	$ff			; if we have already found all bits bad
-		jr	z,mtm_done		; then quit
+		; ; cp	$FF
+		; inc	a
+		; jr	z,mtm_done	; quit early if all bits bad (a was $FF)
 		ld	a,d			; reload a with correct value
 	mtm5cont:
 		ld	(hl),d
 		dec	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become 0
-		cp	b
-		jr	nz,mtm5loop		; not $FF, keep going
-		cp	c
-		jr	nz,mtm5loop		; not $FF, keep going
+		ld	a,c
+		or	b
+		jr	nz,mtm5loop
 	
 	mtm6:					; final check that all are zero
 		memtest_loadregs
@@ -147,17 +160,16 @@ memtestmarch:
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
-		cp	$ff			; if we have already found all bits bad
-		jr	z,mtm_done		; then quit
+		; ; cp	$FF
+		; inc	a
+		; jr	z,mtm_done	; quit early if all bits bad (a was $FF)
 		ld	a,d			; reload a with correct value
 	mtm6cont:
 		dec	hl
 		dec	bc
-		xor	a			; keep going so long as bc doesn't become 0
-		cp	b
-		jr	nz,mtm6loop		; not $FF, keep going
-		cp	c
-		jr	nz,mtm6loop		; not $FF, keep going
+		ld	a,c
+		or	b
+		jr	nz,mtm6loop
 
 	mtmredo:
 		ld	a,d	

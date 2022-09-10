@@ -38,7 +38,7 @@ $(BDSFILES): %.bds: %.bin
 
 MODEL = -m3
 # MEM = 32
-EMUFLAGS = $(MODEL) $(foreach h,$(HD),-h $(h)) $(foreach m,$(MEM),-mem $(m))
+EMUFLAGS = $(MODEL) $(foreach h,$(HD),-h $(h)) $(foreach m,$(MEM),-mem $(m)) -turbo
 
 emu emu1 emu1l emu3 emu4: trs80m13diag.emu
 emu2 emu12 emu16 emu6k: trs80m2diag.emu

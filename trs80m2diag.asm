@@ -19,6 +19,7 @@ VLINE  equ 80
 
 .include "inc/z80.mac"
 .include "inc/spt.mac"
+.include "inc/m2.inc"
 
 ; Notes on global register allocation:
 ;
@@ -49,206 +50,263 @@ reset:
 		di					; mask INT
 		im	1
 
-		ld	a,$81				; enable video memory access
-		out	($FF),a
-		; ld	a,1
-		; out	($EF),a				; turn on the drive light at the very start (select drive 0)
-
 init_crtc:
-		ld	bc,$0FFC	; count $0F, port $FC crtc address reg
-		ld	hl,crtc_setup_last
-	.crtc_setup_loop:
-		ld	a,(hl)		; fetch bytes from setup table and send top to bottom
-		out	(c),b		; CRTC address register
-		out	($FD),a		; CRTC data register
+		ld	bc,$0FFC			; count $0F, port $FC crtc address reg
+		ld	hl,crtc_setup_table+crtc_setup_len-1
+	.loop:	ld	a,(hl)				; fetch bytes from setup table and send top to bottom
+		out	(c),b				; CRTC address register
+		out	($FD),a				; CRTC data register
 		dec	hl
 		dec	b
-		jp	p,.crtc_setup_loop
+		jp	p,.loop
+
 
 test_vram:
 		SPTHREAD_BEGIN				; set up to begin running threaded code
-		; dw spt_chartest				; the VRAM tests bad.  Report and loop
+		dw vram_map				; map in VRAM so we can print results
 
+		;;;; test the VRAM while lighting/clicking the floppy drive
+		dw spt_call, sptc_fdc_reset_head
 		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
+		dw fdc_deselect
 		; dw spt_sim_error,$F0
-		dw spt_jp_nc, .vramok
+		dw spt_jp_nc, .vram_ok
 
-		dw spt_chartest				; the VRAM tests bad.  Report and loop
-	.vrambadloop:
-		dw m2_blink_biterrs
-		dw spt_jp, .vrambadloop
+		dw chartest_fullscreen			; the VRAM tests bad.  Report and loop
+	.vram_bad:
+		dw spt_call, sptc_blink_biterrs
+		dw spt_jp, .vram_bad
 
 
-	.vramok:
+	.vram_ok:
+		;;;; clear the screen, print charset at bottom, report the results of the VRAM test
 		dw con_clear
 		dw spt_con_index,9
 		dw spt_con_print, msg_banner		; print the banner
-		dw spt_print_charset
-
-		dw fdc_reset_head
-		dw spt_pause,$0000
-		dw fdc_deselect
-		dw spt_pause,$0000
-		dw fdc_reset_head
-		dw spt_pause,$0000
-		dw fdc_deselect
-
+		dw spt_call, sptc_print_charset
 		dw spt_select_test, tp_vram
-		dw spt_announcetest 			; print results of VRAM tst
+		dw spt_call, sptc_announcetest 		; print results of VRAM tst
 		dw spt_con_print, msg_testok
 
-	.start:	
+	.test_b1:
+		;;;; perform the test of the bank to which we are going to relocate some code
 		dw spt_select_test, tp_rdest		; load the test parameters
-		dw spt_announcetest 			; announce what test we are about to run
-		dw spt_tp_map_bank			; map in the bank to test (this unmaps VRAM)
+		dw spt_call, sptc_announcetest 		; announce what test we are about to run
+		dw tp_map_bank				; map in the bank to test (this unmaps VRAM)
 		dw memtestmarch				; test the current bank
-
-SPT_SKIP_NMIVEC
-
 		dw vram_map				; map in VRAM so we can print results
 		; dw spt_sim_error, $C0
-		dw spt_jp_nc, .rdestok
-		dw print_errsmsg
+		dw spt_jp_nc, .b1_ok
+
+		dw spt_call, sptc_print_errsmsg		; relocation destination is not OK
 		dw print_biterrs
-
-		dw spt_select_test, tp_low		; select the low mem test next
-		dw spt_announcetest			; announce that we're skipping the relocating test
-
+		dw spt_select_test, tp_low		; announce that we're skipping the relocating test
+		dw spt_call, sptc_announcetest		; 
 		dw spt_con_print, msg_skipped		; we can't run the low test
-
-		dw spt_jp, .table
+		dw spt_jp, .test_banked
 		
 
-	.rdestok:
+	.b1_ok:
 		dw spt_con_print, msg_testok		; bank is good: print the OK message
 		dw spt_con_print, msg_reloc		; bank is good: print the OK message
 
-		dw spt_relocate_test
+		;;;; relocate the memory test into upper half of low RAM, unmap ROM, run test on lowest RAM
+		dw relocate_memtest
 		dw spt_select_test, tp_low_reloc	; select the low mem test next
-		dw spt_announcetest
-		dw spt_relocated_test
+		dw spt_call, sptc_announcetest
+		dw spt_call, sptc_relocated_test
 		dw vram_map				; map in VRAM so we can print results
 		; dw spt_sim_error, $C0
-		dw spt_jp_nc, .zerook
+		dw spt_jp_nc, .b0_ok
 		
-		dw print_errsmsg
+		dw spt_call, sptc_print_errsmsg
 		dw print_biterrs
-		dw spt_jp, .table
+		dw spt_jp, .test_banked
 
-
-	.zerook:
+	.b0_ok:
 		dw spt_con_print, msg_testok		; bank is good: print the OK message
 
-	.table:	dw spt_select_test, tp_high			; load the test table
 
-	.tloop:	dw spt_announcetest 			; announce what test we are about to run
-		dw spt_tp_map_bank
+
+	.test_banked:	
+		;;;; Loop through the rest fo the banks, testing each one
+		dw spt_select_test, tp_high		; load the test table
+
+	.bank_loop:	
+		dw spt_call, sptc_announcetest 		; announce what test we are about to run
+		dw tp_map_bank
+		dw spt_jp_bank_dup, .bank_dup
 		dw memtestmarch				; test the current bank
-		dw vram_map
-		dw spt_jp_nc, .ok
+		dw mark_bank_map_vram
+		; dw vram_map
+		dw spt_jp_nc, .bank_ok
 		
-		dw print_errsmsg
+		dw spt_call, sptc_print_errsmsg
 		dw print_biterrs
 		dw spt_jp, .cont
-	
-	.ok:	dw spt_con_print, msg_testok		; bank is good: print the OK message
 
-	.cont:
-		dw spt_next_test, .start
-		dw spt_jp, .tloop
+	.bank_dup:	
+		dw vram_map
+		dw spt_con_print, msg_dup
+		dw spt_call, sptc_printbank
+		dw spt_jp, .cont
+
+	.bank_ok:
+		dw spt_con_print, msg_testok		; bank is good: print the OK message
+
+	.tryboot_floppy:				; boot from the floppy if it is ready
+		dw spt_jp_fdc_ready,.boot
+		; dw spt_jp,.test_b1
+
+	.cont:	dw spt_tp_next, .test_b1		; start over if we've reached the end
+		dw spt_jp, .bank_loop			; else test the next bank
+
+	.boot:						; TODO: distinguish betweeen floppy and HD boot
+		; dw spt_jp, .test_b1
+		dw boot_os
 
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
-
-fdc_reg_pio			equ	$e0
-fdc_reg_status			equ	$e4	; status register, read only
-fdc_reg_track			equ	$e5
-fdc_reg_sector			equ	$e6
-fdc_reg_data			equ	$e7
-fdc_reg_reset			equ	$e8	; write only, late board revisions
-
-
-fdc_reg_select			equ	$ef	; write only
-fdc_select_mfm			equ	$80
-fdc_select_s0			equ	$40
-fdc_select_none			equ	$0f
-fdc_select_d0			equ	$0e
-fdc_select_d1			equ	$0d
-fdc_select_d2			equ	$0b
-fdc_select_d3			equ	$07
-
-fdc_reg_cmd			equ	$e4	; command register, write only
-fdc_cmd_restore			equ	$00
-fdc_cmd_seek			equ	$10
-fdc_cmd_step			equ	$20
-fdc_cmd_step_in			equ	$40
-fdc_cmd_step_out		equ	$60
-fdc_cmd_read_sector		equ	$80
-fdc_cmd_write_sector		equ	$a0
-fdc_cmd_read_address		equ	$c0
-fdc_cmd_read_track		equ	$e0
-fdc_cmd_write_track		equ	$f0
-fdc_cmd_force_int		equ	$d0
-
-; additional flags OR'd into restore/seek/step commands
-fdc_cmd_update_track		equ	$10	       ; step commands only
-fdc_cmd_head_load		equ	$08
-fdc_cmd_verify_track		equ	$04
-fdc_cmd_step_rate_3ms		equ	$00
-fdc_cmd_step_rate_6ms		equ	$01
-fdc_cmd_step_rate_10ms		equ	$02
-fdc_cmd_step_rate_15ms		equ	$03
-
-; interrupt reason selection for force_int command
-fdc_cmd_force_int_immediate	equ	$08
-fdc_cmd_force_int_index		equ	$04
-fdc_cmd_force_int_not_ready	equ	$02
-fdc_cmd_force_int_ready		equ	$01
-
-
-fdc_terminate_cmd:
-		ld	c,0
-	.start:	ld	a,fdc_cmd_force_int+fdc_cmd_force_int_immediate
-		out	(fdc_reg_cmd),a
-		ld	a,fdc_cmd_force_int
-		out	(fdc_reg_cmd),a
-
-		ld	b,11
-	.delay:	djnz	.delay
-
-		in	a,(fdc_reg_data)		; to reset DRQ, presumably
-		in	a,(fdc_reg_status)
-
-		bit	7,a
-		ret	z				; return if ready
-
-		dec	c
-		jr	nz,.start
+spt_jp_bank_dup:
+		; determine if this bank is a different, already tested bank
+		ex	af,af'				; save old flags
+		ld	h,(iy+TP_BASE)			; get the base address of ram
+		ld	l,15				; plus 15 bytes
+		ld	bc,15				; compare bytes at offset 15...1 (not 0)
+		ld	a,$55				; test that the bank is filled with $55
+	.test55:
+		cpd					; compare a,(hl) ; hl-- ; bc--
+		jr	nz,.done			; if mem != $55, this isn't a tested bank, so quit
+		jp	pe,.test55			; if we have more to test, loop
+	
+		ld	a,(hl)				; HL should now be the base address
+		cp	(iy+TP_BANK)			; compare to current bank number
+		jr	c,.dup				; mem < bank; found a duplicate bank number
+	.done:
+		pop	hl				; discard the error address
+		ex	af,af'
+		ret
+	
+	.dup:						; found a match.  Jump to the specified SPT location
+		ld	e,a				; report the error as the bank we found
+		ex	af,af'
+		pop	hl
+		ld	sp,hl
 		ret
 
+mark_bank_map_vram:
+		ex	af,af'				; save flags
+		ld	h,(iy+TP_BASE)			; get this bank's base in HL
+		ld	l,0
+		ld	b,(iy+TP_BANK)			; get the bank number in b
+		ld	(hl),b				; mark the base address with the bank number
+
+		ld	a,b				; get the bank number into A
+		or	$80				; enable VRAM
+		out	($FF),a				; map in VRAM and the current bank
+
+		ex	af,af'				; restore the saved flags
+		ret	nc				; return if the test had no error
+
+		ld	a,$ff				; see if this is a an absent bank
+		cp	e
+		jr	z,.absent			; if absent, don't record it as an errored bank
+
+		ld	a,'!'				; not absent, but bad; note this with the exclamation
+		ld	(VBASE),a			; put an exclamation in the corner if this bank is bad
+	.absent:
+		scf					; set the carry flag again
+		ret
+
+ld_a_e:
+		ld	a,e
+		ret
+
+sptc_printbank:
+		dw ld_a_e
+		dw con_printh
+		dw spt_con_print,msg_space
+		dw spt_exit
+
+ld_d_0:
+		ld	d,0
+		ret
+
+spt_dec_d_jp_nz:
+		pop	hl
+		dec	d
+		ret	z
+		ld	sp,hl
+		ret
+
+spt_jp_fdc_ready
+		pop	hl
+		ld	a,fdc_sel_side_0+fdc_sel_dr_0
+		out	(fdc_select_reg),a
+		in	a,(fdc_status_reg)
+		bit	7,a
+		ret	nz				; return if not ready
+		ld	sp,hl
+		ret
+
+
+sptc_fdc_terminate_ready_timeout:
+		dw	ld_d_0				; wait up to 256 times, then fail out
+	.loop:	dw	fdc_terminate_cmd
+		dw	spt_jp_fdc_ready,.done
+		dw	spt_dec_d_jp_nz,.loop
+	.done:	dw	spt_exit
+
+; terminate_fdc_cmd:
+fdc_terminate_cmd:
+		; ld	c,0
+	.start:	ld	a,fdc_cmd_force_int+fdc_cmd_force_int_immediate
+		out	(fdc_cmd_reg),a
+		ld	a,fdc_cmd_force_int
+		out	(fdc_cmd_reg),a
+
+		ld	b,11
+	.delay:	djnz	.delay				; delay by 138 T-states (34.5ms@4MHz)
+
+		in	a,(fdc_data_reg)		; to reset DRQ, presumably
+		in	a,(fdc_status_reg)
+
+		; bit	7,a
+		; ret	z				; return if ready
+
+		; dec	c				; issue the command up to 256 times
+		; jr	nz,.start
+		ret
+
+fdc_select_none:
+		ld	a,fdc_sel_side_0|fdc_sel_dr_none
+		jr	fdc_select
 fdc_select_d0s0:
-		ld	a,fdc_select_s0|fdc_select_d0	; select d0s0
-		out	(fdc_reg_select),a
+		ld	a,fdc_sel_side_0|fdc_sel_dr_0	; select d0s0
+fdc_select:
+		out	(fdc_select_reg),a
 		ld	b,0				; short delay for FDC to respond
 	.dly1:	djnz	.dly1
 		ret
 
 fdc_deselect:
-		ld	a,fdc_select_none		; deselect the drive
-		out	(fdc_reg_select),a
+		ld	a,fdc_sel_dr_none		; deselect the drive
+		out	(fdc_select_reg),a
 		ret
 
+fdc_step_in_5:
+		ld	c,5
 fdc_step_in:
-		pop	bc				; how many tracks (only C is significant)
+		; pop	bc				; how many tracks (only C is significant)
 
 	.silp:	ld	a,fdc_cmd_step_in|fdc_cmd_update_track|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
-		out	(fdc_reg_cmd),a
+		out	(fdc_cmd_reg),a
 
 		ld	b,0				; short delay for FDC to respond
 	.dly1:	djnz	.dly1
 
-	.wrdy1:	in	a,(fdc_reg_status)		; wait for ready indication
+	.wrdy1:	in	a,(fdc_status_reg)		; wait for ready indication
 		bit	0,a
 		jr	nz,.wrdy1
 	
@@ -258,74 +316,20 @@ fdc_step_in:
 
 fdc_head_restore:
 		ld	a,fdc_cmd_restore|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
-		out	(fdc_reg_cmd),a			; restore head to track zero
-
-		ld	b,0				; short delay for FDC to respond
-	.dly2:	djnz	.dly2
-
-	.wrdy2:	in	a,(fdc_reg_status)		; wait for ready indication
-		bit	0,a
-		jr	nz,.wrdy2
+		out	(fdc_cmd_reg),a			; restore head to track zero
 		ret
 
-fdc_reset_head:
-		SPTHREAD_ENTER
+
+sptc_fdc_reset_head:
 		dw fdc_select_d0s0
-	.term:	dw fdc_terminate_cmd			; reset FDC
-		; dw fdc_jp_notready,.term
-		dw fdc_step_in,5
+		; dw fdc_terminate_cmd			; reset FDC
+		dw spt_call, sptc_fdc_terminate_ready_timeout
+		dw fdc_step_in_5
 		dw fdc_head_restore
+		dw spt_pause,1599
 		dw spt_exit
 
 
-m2_drivelight_off:
-		ld	a,$4F
-		jr	m2_drivelight_set
-
-m2_drivelight_on:
-		ld	a,$4E
-m2_drivelight_set:
-		out	($EF),a
-		ret
-
-spt_sim_error:
-		pop	de
-		scf
-		ret
-
-; .if SIMULATE_ERROR
-; spt_simulate_error:
-; 		ex	af,af'
-
-; 		ld	a,(iy+3)			; get the start address page
-; 		cp	SIMULATE_ERROR			; match a particular page
-; 		jr	nz,.noerror				; only error on specific page
-; 		ld	e,00100001b			; report an error
-; 		ex	af,af'
-; 		scf					; and set the carry flag
-; 		ret
-; 	.noerror:
-; 		ex	af,af'
-; 		ret
-; .endif
-
-; ; test if the error is $FF (all bits bad)
-; spt_jp_all_bits_bad:
-; 		pop	hl				; get the address for jumping if match
-; 		ld	a,$FF				; check for all bits bad
-; 		cp	e
-; 		ret	nz				; return without jump if there is NOT a match
-; 		ld	sp,hl				; else jump to the requested location
-; 		ret
-
-; ; test if the e register matches 7-bit vram and jump to spt address if match
-; spt_jp_e_7bit_vram:
-; 		pop	hl				; get the address for jumping if match
-; 		ld	a,01000000b			; ignore bit 6
-; 		cp	e				; see if there are other errors
-; 		ret	nz				; return without jump if there is NOT a match
-; 		ld	sp,hl				; else jump to the requested location
-; 		ret
 
 ; test if the e register matches 7-bit vram and jump to spt address if match
 spt_jp_e_zero:
@@ -344,47 +348,32 @@ spt_jp_e_ff:
 		ld	sp,hl				; else jump to the requested location
 		ret
 
-; fdc_jp_notready:
-; spt_jp_a7_nz:
-; 		pop	hl				; get the address for jumping if match
-; 		bit	7,a				; test bit 7
-; 		ret	z				; return without jump if there is NOT a match
-; 		ld	sp,hl				; else jump to the requested location
-; 		ret
 
 
 ; load the label string address from the current test parameter table entry into hl
-spt_ld_hl_tp_label:
-		; ld	l,(iy+TP_LABEL)
-		; ld	h,(iy+TP_LABEL+1)
+ld_hl_tp_label:
 		ld	c,(iy+TP_LABEL)
 		ld	b,0
 		ld	hl,labels_start
 		add	hl,bc
 		ret
 
-spt_ld_hl_tp_base:
-		; ld	l,(iy+TP_BASE)
-		; ld	h,(iy+TP_BASE+1)
+ld_hl_tp_base:
 		ld	h,(iy+TP_BASE)
 		ld	l,0
 		ret
 
-spt_ld_bc_tp_size:
-		; ld	c,(iy+TP_SIZE)
-		; ld	b,(iy+TP_SIZE+1)
+ld_bc_tp_size:
 		ld	b,(iy+TP_SIZE)
 		ld	c,0
 		ret
 
-spt_ld_a_tp_bank:
-		; ld	a,(iy+TP_BANK+1)
+ld_a_tp_bank:
 		ld	a,(iy+TP_BANK)
 		ret
 
 
-spt_tp_map_bank:
-		; ld	a,(iy+TP_BANK+1)
+tp_map_bank:
 		ld	a,(iy+TP_BANK)
 		cp	0				; special case: when we say bank 0, we really mean 1
 		jr	nz,.send
@@ -393,44 +382,35 @@ spt_tp_map_bank:
 		out	($FF),a
 		ret
 
-spt_tp_goto:
-		ld	a,(iy+TP_POS)
+spt_tp_goto:	ld	a,(iy+TP_POS)
 		ld	ixl,a
 		ld	a,(iy+TP_POS+1)
 		ld	ixh,a
 		ret
 
 ; move to the next test parameter table entry
-spt_next_test:	pop	hl				; get the address to jump to if we are starting over
+spt_tp_next:	pop	hl				; get the address to jump to if we are starting over
 		ld 	bc,tp_entrysize			; find the next entry
 		add 	iy,bc
 		ld	a,(iy+TP_SIZE)			; is the length zero?
-		; or	(iy+TP_SIZE+1)
 		or	a
 		ret	nz				; no, use it
-
-		ld	a,$80				; map the vram
-		out	($FF),a
-		; jp	floppy_boot
-		jp	boot_os
 
 		ld	c,(iy+TP_GOTO)			; yes, get the address of the first entry
 		ld	b,(iy+TP_GOTO+1)
 		ld	iy,0
 		add	iy,bc
-		; sub	a				; clear zero flag when restarting
 		ld	sp,hl				; jump to the next location
 		ret
 
-spt_announcetest:
-		SPTHREAD_ENTER
+sptc_announcetest:
 		dw spt_tp_goto
-		dw spt_ld_hl_tp_label
+		dw ld_hl_tp_label
 		dw con_print
-		dw spt_ld_a_tp_bank
+		dw ld_a_tp_bank
 		dw con_printh
 		dw spt_con_print, msg_space
-		dw spt_tp_printrange
+		dw spt_call, sptc_tp_print_range
 		dw spt_con_print, msg_testing
 		dw spt_con_index, -status_backup
 		dw spt_exit
@@ -447,17 +427,16 @@ add_hl_bc:	add	hl,bc
 dec_hl:		dec	hl
 		ret
 
-spt_tp_printrange:
-		SPTHREAD_ENTER
-		dw spt_ld_hl_tp_base
+sptc_tp_print_range:
+		dw ld_hl_tp_base
 		dw ld_a_h
 		dw con_printx
 		dw ld_a_l
 		dw con_printx
 		dw spt_con_print, msg_dash
 
-		dw spt_ld_hl_tp_base
-		dw spt_ld_bc_tp_size
+		dw ld_hl_tp_base
+		dw ld_bc_tp_size
 		dw add_hl_bc
 		dw dec_hl
 		dw ld_a_h
@@ -468,12 +447,11 @@ spt_tp_printrange:
 		dw spt_exit
 
 
-spt_pause:
+spt_pause:							; pause by an amount specified in BC
 		pop	bc
-; pause by an amount specified in BC
-; do_pause:
+pause_bc:							; pause by BC*50-5+14 t-states
 		ex	af,af'
-	.loop:							; pause by BC*50-5+14 t-states
+	.loop:							
 		nop12
 		nop12
 		dec	bc
@@ -484,8 +462,7 @@ spt_pause:
 		ret
 
 
-print_errsmsg:
-		SPTHREAD_ENTER
+sptc_print_errsmsg:
 		dw spt_jp_e_ff,.absent
 		dw spt_con_print,msg_biterrs
 		dw spt_exit
@@ -510,69 +487,64 @@ print_biterrs:
 
 		ret
 
-spt_rlc_e:
+rlc_e:
 		rlc	e
 		ret
 
-m2_blink_bit:
+spt_blink_bit_rl:
 		; rlc	e
 		SPTHREAD_ENTER
-		dw spt_rlc_e
-		dw m2_drivelight_on
+		dw rlc_e
+		; dw m2_drivelight_on
+		dw fdc_select_d0s0
 		dw spt_jp_c, .long
 		dw spt_pause, $2000
 		dw spt_jp, .off
 	.long:
 		dw spt_pause, $FFFF
 	.off:
-		dw m2_drivelight_off
+		; dw m2_drivelight_off
+		dw fdc_select_none
 		dw spt_pause, $8000
 		dw spt_exit
 		
 
-m2_blink_biterrs:
-		SPTHREAD_ENTER
-		dw m2_blink_bit
-		dw m2_blink_bit
-		dw m2_blink_bit
-		dw m2_blink_bit
-		dw m2_blink_bit
-		dw m2_blink_bit
-		dw m2_blink_bit
-		dw m2_blink_bit
+sptc_blink_biterrs:
+		dw spt_blink_bit_rl
+		dw spt_blink_bit_rl
+		dw spt_blink_bit_rl
+		dw spt_blink_bit_rl
+		dw spt_blink_bit_rl
+		dw spt_blink_bit_rl
+		dw spt_blink_bit_rl
+		dw spt_blink_bit_rl
 		dw spt_pause, $00
 		dw spt_pause, $00
 		dw spt_pause, $00
 		dw spt_exit
 
-
-
-spt_print_charset:
-		ld	a,ixh
-		ld	h,a
-		ld	a,ixl
-		ld	l,a
+ld_a_0:
 		ld	a,0
-		SPTHREAD_ENTER
-		MAC_SPT_CON_GOTO 20,0
-		dw spt_con_print, msg_charset		; show a copy of the character set
-		dw spt_ld_bc, $40
-		dw do_charset_ix
-		dw spt_con_index, 16
-		dw spt_ld_bc, $40
-		dw do_charset_ix
-		dw spt_con_index, 16
-		dw spt_ld_bc, $40
-		dw do_charset_ix
-		dw spt_con_index, 16
-		dw spt_ld_bc, $40
-		dw do_charset_ix
+		ret
+
+sptc_print_charset:
+		MAC_SPT_CON_GOTO 20,-8
+		dw ld_a_0
+		dw spt_charset_40
+		dw spt_charset_40
+		dw spt_charset_40
+		dw spt_charset_40
 		dw spt_exit
 
-spt_chartest:
+spt_charset_40:
+		ld	bc,$10
+		add	ix,bc
+		ld	bc,$40
+		jr	charset_here
+chartest_fullscreen:
 		ld	ix,VBASE
 		ld	bc,VSIZE
-do_charset_ix:
+charset_here:
 	.charloop:
 		ld	(ix+0),a	; copy A to byte pointed by HL
 		inc	a		; increments A
@@ -603,6 +575,7 @@ msg_reloc:	dbz "(reloc) "
 msg_skipped:	dbz " *skip* "
 msg_biterrs:	dbz " errors:"
 msg_absent:	dbz " absent:"
+msg_dup:	dbz "  DUP "
 msg_testing:	db " ", " "+$80, "t"+$80, "e"+$80, "s"+$80, "t"+$80, " "+$80, " ", 0
 status_backup equ $-msg_testing-1
 
@@ -625,12 +598,20 @@ TP_LABEL equ 3
 TP_POS equ 4
 TP_GOTO equ 1
 
+memtest_ld_bc_size .macro
+		ld	b,(iy+TP_SIZE)
+		ld	c,a
+.endm
+
+memtest_ld_hl_base .macro
+		ld	h,(iy+TP_BASE)
+		ld	l,a
+.endm
+
 memtest_loadregs .macro
 		xor	a
-		ld	b,(iy+0)
-		ld	c,a
-		ld	h,(iy+1)
-		ld	l,a
+		memtest_ld_bc_size
+		memtest_ld_hl_base
 .endm
 
 
@@ -707,7 +688,7 @@ tp_high:	db	$40, $80, $1, label_bank16-labels_start
 
 
 
-spt_relocate_test:
+relocate_memtest:
 		ld	de,reloc_dst_begin
 		ld	hl,reloc_src_begin
 		ld	bc,reloc_dst_end-reloc_dst_begin
@@ -720,7 +701,7 @@ spt_relocate_test:
 
 ; ----------------------------------------------------------------------------
 ; Relocated tests:
-; The code below is assembled to be relocated to $4000.  It contains threaded
+; The code below is assembled to be relocated to $4100.  It contains threaded
 ; code which cannot be written in a position-independent manner (consisting
 ; mostly of absolute subroutine addresses).  So we use the assembler's 
 ; .phase directive to tell it to assemble for operation when moved to $4000.
@@ -730,21 +711,20 @@ spt_relocate_test:
 ; calls back into it can happen until the ROM is remapped, and no data
 ; from it can be seen either (hence an extra copy of the label).
 reloc_src_begin:
-		.phase $4000
+		.phase $4100
 reloc_dst_begin:
-spt_relocated_test:
-		SPTHREAD_ENTER
-		dw spt_unmap_rom
+sptc_relocated_test:
+		dw rom_unmap
 		dw relocated_memtest
-		dw spt_map_rom
+		dw rom_map
 		dw spt_exit
 
-spt_unmap_rom:
+rom_unmap:
 		xor	a
 		out	($F9),a
 		ret
 
-spt_map_rom:
+rom_map:
 		ld	a,1
 		out	($F9),a
 		ret

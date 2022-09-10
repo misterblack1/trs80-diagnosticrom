@@ -110,7 +110,7 @@ SPT_SKIP_NMIVEC
 		dw spt_play_testresult			; play the tones
 
 	.cont:
-		dw spt_next_test, .start
+		dw spt_tp_next, .start
 		dw spt_jp, .loop
 
 
@@ -217,7 +217,7 @@ spt_ld_hl_tp_notes:
 		ret
 
 ; move to the next test parameter table entry
-spt_next_test:	pop	hl				; get the address to jump to if we are starting over
+spt_tp_next:	pop	hl				; get the address to jump to if we are starting over
 		ld 	bc,tp_size			; find the next entry
 		add 	iy,bc
 		ld	a,(iy+0)			; is the length zero?
@@ -297,7 +297,7 @@ spt_play_testresult:
 spt_pause:
 		pop	bc
 ; pause by an amount specified in BC
-do_pause:
+pause_bc:
 	.loop:
 		dec	bc
 		ld	a,b
@@ -324,6 +324,8 @@ print_biterrs:
 
 		ret
 
+spt_ld_bc:	pop 	bc
+		ret
 
 
 spt_print_charset:
@@ -378,11 +380,19 @@ msg_banktest:	dbz "TESTING BANK SIZE  "
 ; 4. address of tones for identifying the test audibly
 tp_size		equ	8
 
-memtest_loadregs .macro
+memtest_ld_bc_size .macro
 		ld	c,(iy+0)
 		ld	b,(iy+1)
+.endm
+
+memtest_ld_hl_base .macro
 		ld	l,(iy+2)
 		ld	h,(iy+3)
+.endm
+
+memtest_loadregs .macro
+		memtest_ld_bc_size
+		memtest_ld_hl_base
 .endm
 
 

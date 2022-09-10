@@ -1,3 +1,6 @@
+; code: language=asm-collection tabSize=8
+
+
 spt_con_print:	pop hl
 con_print:
 	.loop:
@@ -14,8 +17,8 @@ con_print:
 
 
 
-mac_con_printc macro
-		ld (ix+0), a
+mac_con_printc macro reg
+		ld (ix+0), reg
 		inc ix
 endm
 
@@ -33,10 +36,10 @@ endm
 ; 		rra
 ; 		rra
 ; 		mac_itoh_nybble		; convert to ascii
-; 		mac_con_printc
+; 		mac_con_printc a
 ; 		ld a,b			; fetch lower nybble
 ; 		mac_itoh_nybble		; convert to ascii
-; 		mac_con_printc		
+; 		mac_con_printc a
 ; endm
 
 con_printx:
@@ -46,10 +49,10 @@ con_printx:
 		rra
 		rra
 		mac_itoh_nybble		; convert to ascii
-		mac_con_printc
+		mac_con_printc a
 		ld a,b			; fetch lower nybble
 con_printh:	mac_itoh_nybble		; convert to ascii
-		mac_con_printc
+		mac_con_printc a
 		ret
 
 
@@ -112,8 +115,8 @@ crtc_setup_table:
 		db $00			; $C: Start Address H = 0
 		db $00			; $D: Start Address L = 0
 		db $03			; $E: Cursor H (HL = $3E9)
-crtc_setup_last:
 		db $E9			; $F: Cursor H (decimal 1001, center of screen)
+crtc_setup_len equ $-crtc_setup_table
 
 ; ; modified for 64x24 operation
 ; crtc_setup_table:
@@ -133,3 +136,11 @@ crtc_setup_last:
 ; 		db $00			; Start Address L = 0
 ; 		db $03			; Cursor H (HL = $3E9)
 ; crtc_setup_last	db $E9			; Cursor H (decimal 1001, center of screen)
+
+con_cursor_on:
+		ld	bc,$0AFC	; point at the CRTC address port
+		out	(c),b		; select the cursor control register
+		inc	c		; point at the CRTC data port
+		ld	b,01100101b	; turn on the cursor
+		out	(c),b
+		ret

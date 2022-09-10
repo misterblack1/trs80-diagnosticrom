@@ -1,6 +1,6 @@
 ; code: lang=asm-collection tabSize=8
-spt_ld_bc:	pop 	bc
-		ret
+; spt_ld_bc:	pop 	bc
+; 		ret
 
 ; spt_ld_hl:	pop 	hl
 ; 		ret
@@ -58,9 +58,10 @@ spt_jp_c:	pop	hl
 ; 		jp	(hl)
 
 
-; ; call an all-threaded subroutine
-; ;	the parameter (pointed by SP) is where we are jumping
-; spt_call:
-; 		pop	hl
-; 		SPTHREAD_SAVE
-; 		jp	(hl)
+; call an all-threaded subroutine
+;	the parameter (pointed by SP) is where we are jumping
+spt_call:
+		pop	hl
+		SPTHREAD_SAVE
+		ld	sp,hl
+		ret
