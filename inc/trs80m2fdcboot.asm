@@ -2,37 +2,10 @@
 
 ; .include "inc/m2.inc"
 
-boot_os:
+
+hard_boot:
 		ld	sp,hd_stack_init
-
-		call	con_cursor_on
-
-		ld	d,200
-clear_keyboard_loop:
-		in	a,(nmi_status_reg)
-		bit	nmi_status_bit_kbd_int,a
-		jr	z,.clear_kbd_no_key
-		in	a,(kbd_data_reg)
-	.clear_kbd_no_key:
-		ld	bc,128
-		call	delay_bc		; delay by 3333 t-states (833.25us @ 4MHz)
-		dec	d
-		jr	nz,clear_keyboard_loop
-
-		; reset HDC and check for drive presence
-		xor	a
-		out	(hdc_control_reg),a
-		ld	a,hdc_control_soft_reset
-		out	(hdc_control_reg),a
-
-		; Earlier versions of the boot ROM didn't enable interrupt and DMA.  Not sure
-		; why this is a good idea.
-		ld	a,hdc_control_deven+hdc_control_wait_enable+hdc_control_intrq_enable+hdc_control_dma_enable
-		out	(hdc_control_reg),a
-
-		in	a,(hdc_drive_id_45)	; check ID of drive 4
-		and	$0f
-		jp	z,floppy_boot		;   zero, no drive 4
+		call	con_clear_kbd
 
 hd_boot:
 		ld	d,21	; loop up to 21 times waiting for controller ready
@@ -132,18 +105,8 @@ hd_tr0_not_found:
 		ld	de,'HD'
 
 boot_err:
-		; push	hl
-		; call	con_clear
-		; pop	hl
-		
 		call	erase_screen_show_cursor
 
-		; ld	hl,$fb9a
-		; ld	(hl),d
-		; inc	hl
-		; ld	(hl),e
-		; inc	hl
-		; ld	(hl),' '
 		ld	($FB9A),de
 		ld	ix,$FB9D
 		; call	con_printx
@@ -168,8 +131,10 @@ erase_screen_show_cursor:
 
 floppy_boot:
 		ld	sp,fd_stack_init	; etablish a stack
-		xor	a
+		xor	a			; reset the HDC in case it was activated
 		out	(hdc_control_reg),a
+
+		call	con_clear_kbd
 
 	.fd_wait_ready:
 		ld	a,fdc_sel_side_0+fdc_sel_dr_0
@@ -278,7 +243,6 @@ fd_read_sector:
 		jr	nz,rs_err
 
 		; now clear the screen and call the boot code
-		; call	con_clear
 		call	erase_screen_show_cursor
 
 		call	fd_boot_sig_1_loc+fd_boot_sig_1_len
@@ -317,22 +281,6 @@ delay_bc: 			; delay by BC*26-5+10 T-states (including ret instruction)
 		jr	nz,delay_bc
 		ret
 
-
-
-; use the FDC's FORCE INTERRUPT command to terminate anything in progress
-; returns FDC status regster in A
-; terminate_fdc_cmd:
-; 		; push	bc
-; 		call fdc_terminate_cmd
-; 		; ld	a,fdc_cmd_force_int+fdc_cmd_force_int_immediate
-; 		; out	(fdc_cmd_reg),a
-; 		; ld	a,fdc_cmd_force_int
-; 		; out	(fdc_cmd_reg),a
-; 		; call	delay_bc_5		; delay by 135 T-states (33.75us @ 4MHz)
-; 		; in	a,(fdc_data_reg)	; to reset DRQ, presumably
-; 		; in	a,(fdc_status_reg)
-; 		; pop	bc
-; 		ret
 
 ; on entry:
 ;   HL = pointer to expected signature value constant (ROM)
@@ -392,6 +340,21 @@ hd_wait_not_busy:
 		in	a,(hdc_error_reg)
 		ret
 
+hd_check_present:
+		; reset HDC and check for drive presence
+		xor	a
+		out	(hdc_control_reg),a
+		ld	a,hdc_control_soft_reset
+		out	(hdc_control_reg),a
+
+		; Earlier versions of the boot ROM didn't enable interrupt and DMA.  Not sure
+		; why this is a good idea.
+		ld	a,hdc_control_deven+hdc_control_wait_enable+hdc_control_intrq_enable+hdc_control_dma_enable
+		out	(hdc_control_reg),a
+
+		in	a,(hdc_drive_id_45)	; check ID of drive 4
+		and	$0f
+		ret
 
 hd_boot_end_sig:
 		db	"/* END BOOT */"

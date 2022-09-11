@@ -95,7 +95,8 @@ test_vram:
 		dw spt_call, sptc_announcetest 		; announce what test we are about to run
 		dw tp_map_bank				; map in the bank to test (this unmaps VRAM)
 		dw memtestmarch				; test the current bank
-		dw vram_map				; map in VRAM so we can print results
+		dw mark_bank_map_vram
+		; dw vram_map				; map in VRAM so we can print results
 		; dw spt_sim_error, $C0
 		dw spt_jp_nc, .b1_ok
 
@@ -116,7 +117,8 @@ test_vram:
 		dw spt_select_test, tp_low_reloc	; select the low mem test next
 		dw spt_call, sptc_announcetest
 		dw spt_call, sptc_relocated_test
-		dw vram_map				; map in VRAM so we can print results
+		dw mark_bank_map_vram
+		; dw vram_map				; map in VRAM so we can print results
 		; dw spt_sim_error, $C0
 		dw spt_jp_nc, .b0_ok
 		
@@ -133,7 +135,10 @@ test_vram:
 		;;;; Loop through the rest fo the banks, testing each one
 		dw spt_select_test, tp_high		; load the test table
 
-	.bank_loop:	
+	.bank_loop:
+		dw spt_jp_mem_errs,.bank_test		; don't try to boot if there are errors
+		dw spt_jp_fdc_ready,.boot_floppy	; boot from the floppy if it is ready
+	.bank_test:
 		dw spt_call, sptc_announcetest 		; announce what test we are about to run
 		dw tp_map_bank
 		dw spt_jp_bank_dup, .bank_dup
@@ -155,19 +160,24 @@ test_vram:
 	.bank_ok:
 		dw spt_con_print, msg_testok		; bank is good: print the OK message
 
-	.tryboot_floppy:				; boot from the floppy if it is ready
-		dw spt_jp_fdc_ready,.boot
-		; dw spt_jp,.test_b1
-
-	.cont:	dw spt_tp_next, .test_b1		; start over if we've reached the end
+	.cont:						; finished testing a bank.  What next?
+		dw spt_tp_next, .tested_all		; start over if we've reached the end
+		; dw spt_jp_fdc_ready,.boot_floppy	; boot from the floppy if it is ready
 		dw spt_jp, .bank_loop			; else test the next bank
 
-	.boot:						; TODO: distinguish betweeen floppy and HD boot
-		; dw spt_jp, .test_b1
-		dw boot_os
+	.tested_all:
+		dw spt_jp_mem_errs,.test_b1		; don't try to boot if there are errors
+		dw spt_jp_hd_present,.boot_hd
+		dw spt_jp, .test_b1
 
+	.boot_floppy:					; TODO: distinguish betweeen floppy and HD boot
+		dw floppy_boot
+	.boot_hd:
+		dw hard_boot
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
+
+
 spt_jp_bank_dup:
 		; determine if this bank is a different, already tested bank
 		ex	af,af'				; save old flags
@@ -194,6 +204,15 @@ spt_jp_bank_dup:
 		pop	hl
 		ld	sp,hl
 		ret
+
+spt_jp_mem_errs:
+		pop	hl				; get the address to jump to if there are errors
+		ld	a,(VBASE)
+		cp	'!'				; if there is no exclamation point
+		ret	nz				; continue
+		ld	sp,hl				; else go to new thread location
+		ret
+
 
 mark_bank_map_vram:
 		ex	af,af'				; save flags
@@ -240,13 +259,33 @@ spt_dec_d_jp_nz:
 		ld	sp,hl
 		ret
 
-spt_jp_fdc_ready
+spt_jp_fdc_ready:
 		pop	hl
 		ld	a,fdc_sel_side_0+fdc_sel_dr_0
 		out	(fdc_select_reg),a
 		in	a,(fdc_status_reg)
 		bit	7,a
 		ret	nz				; return if not ready
+		ld	sp,hl
+		ret
+
+spt_jp_hd_present:
+		; reset HDC and check for drive presence
+		xor	a
+		out	(hdc_control_reg),a
+		ld	a,hdc_control_soft_reset
+		out	(hdc_control_reg),a
+
+		; Earlier versions of the boot ROM didn't enable interrupt and DMA.  Not sure
+		; why this is a good idea.
+		ld	a,hdc_control_deven+hdc_control_wait_enable+hdc_control_intrq_enable+hdc_control_dma_enable
+		out	(hdc_control_reg),a
+
+		in	a,(hdc_drive_id_45)	; check ID of drive 4
+		and	$0f
+
+		pop	hl
+		ret	z				; return if not present
 		ld	sp,hl
 		ret
 
@@ -260,7 +299,6 @@ sptc_fdc_terminate_ready_timeout:
 
 ; terminate_fdc_cmd:
 fdc_terminate_cmd:
-		; ld	c,0
 	.start:	ld	a,fdc_cmd_force_int+fdc_cmd_force_int_immediate
 		out	(fdc_cmd_reg),a
 		ld	a,fdc_cmd_force_int
@@ -271,12 +309,6 @@ fdc_terminate_cmd:
 
 		in	a,(fdc_data_reg)		; to reset DRQ, presumably
 		in	a,(fdc_status_reg)
-
-		; bit	7,a
-		; ret	z				; return if ready
-
-		; dec	c				; issue the command up to 256 times
-		; jr	nz,.start
 		ret
 
 fdc_select_none:

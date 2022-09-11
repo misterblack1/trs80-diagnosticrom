@@ -144,3 +144,19 @@ con_cursor_on:
 		ld	b,01100101b	; turn on the cursor
 		out	(c),b
 		ret
+
+con_clear_kbd:
+		ld	d,200
+	.loop:
+		in	a,(nmi_status_reg)
+		bit	nmi_status_bit_kbd_int,a
+		jr	z,.no_key
+		in	a,(kbd_data_reg)
+	.no_key:
+		ld	b,0
+	.delay:	djnz	.delay
+		; ld	bc,128
+		; call	delay_bc		; delay by 3333 t-states (833.25us @ 4MHz)
+		dec	d
+		jr	nz,.loop
+		ret
