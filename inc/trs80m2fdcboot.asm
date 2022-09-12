@@ -63,6 +63,11 @@ hd_boot:
 		ld	d,h		; copy HL into DE for signature check
 		ld	e,l
 		out	(c),b		; write sector register
+
+		ld	a,20		; allow no more than 19 sectors to be read
+		cp	b		; else we will smash our stack
+		jr	c,hd_err_no_sig
+
 		ld	a,hdc_command_read_sector_pio
 		out	(hdc_command_reg),a
 		call	hd_wait_not_busy
@@ -90,54 +95,45 @@ hd_boot:
 		pop	bc
 		jr	nz,.hd_read_sector	; end boot sig not found, continue read
 
-		ld	bc,0
-		call	delay_bc		; delay by 1,703,915 t-states (0.42597875 sec @ 4MHz)
+		; ld	bc,0
+		; call	delay_bc		; delay by 1,703,915 t-states (0.42597875 sec @ 4MHz)
 		; call	check_escape_key
 		; jr	z,floppy_boot
 
 		xor	a			; disable HD
 		out	(hdc_control_reg),a
 
-		call	con_clear
+		call	boot_clear_screen
 
 		ex	de,hl			; jump to location after end sig
 		jp	(hl)
 
+hd_err_no_sig:
+		ld	de,'RS'
+		xor	a
+		jr	show_boot_error
 hd_err_from_err_reg:
 hd_tr0_not_found:
 		ld	de,'HD'
 
 
-boot_msg_start equ VBASE+(VLINE*21)+28
+boot_error_pos equ VBASE+(VLINE*21)+29
 show_boot_error:
 		; call	con_clear
 
-		ld	(boot_msg_start+boot_err_msg_len),de
-		ld	ix,boot_msg_start+boot_err_msg_len+3
+		ld	(boot_error_pos+boot_err_msg_len),de
+		ld	ix,boot_error_pos+boot_err_msg_len+3
 
-		; ld	($FB9A),de
-		; ld	ix,$FB9D
-		; call	con_printx
 		ld	e,a
 		call	print_biterrs
 
 		ld	hl,boot_err_msg
-		ld	de,boot_msg_start
-		; ld	de,$fb8e
+		ld	de,boot_error_pos
 		ld	bc,boot_err_msg_len
 		ldir
 
 		call	con_cursor_off
 	.spin:	jr .spin
-; wait_for_escape_key
-; 		call	check_escape_key
-; 		jr	nz,wait_for_escape_key
-
-
-; erase_screen_show_cursor:
-; 		; call	con_clear
-; 		; call	con_cursor_on
-; 		ret
 
 
 floppy_boot:
@@ -157,7 +153,7 @@ floppy_boot:
 		bit	7,a
 		jr	nz,.fd_wait_ready
 
-		call	fdc_terminate_cmd	; why this extra terminate?  Especially without a wait following?
+		; call	fdc_terminate_cmd	; why this extra terminate?  Especially without a wait following?
 
 		; step in 5 tracks
 		call	fdc_step_in_5
@@ -258,7 +254,7 @@ floppy_boot:
 		jr	nz,rs_err
 
 		; now clear the screen and call the boot code
-		call	con_clear
+		call	boot_clear_screen
 
 		call	fd_boot_sig_1_loc+fd_boot_sig_1_len
 		jp	fd_boot_sig_0_loc+fd_boot_sig_0_len
@@ -369,24 +365,35 @@ hd_check_present:
 		and	$0f
 		ret
 
+boot_message_line equ 20
+boot_message_pos equ VBASE+(VLINE*boot_message_line)+36
+boot_message_len equ 4
 show_boot_message:
 		push	de
 
-		ld	hl,VBASE+(VLINE*20)
+		ld	hl,VBASE+(VLINE*boot_message_line)
 		ld	bc,VLINE*4
 		call	con_clear_area
 
 		pop	de
-		ld	(VBASE+(VLINE*20)+41),de
-		; ld	(VBASE+(VLINE*1)+41),de
+		ld	(boot_message_pos+boot_message_len+1),de
 
-		ld	ix,VBASE+(VLINE*20)+36
-		; ld	ix,VBASE+(VLINE*1)+36
-		ld	hl,msg_booting
-		call	con_print
+		ld	hl,boot_err_msg+1
+		ld	de,boot_message_pos
+		ld	bc,boot_message_len
+		ldir
+
+		; ld	ix,boot_message_start
+		; ld	hl,msg_booting
+		; call	con_print
 
 		call	con_cursor_on
 		ret
+
+boot_clear_screen:
+		ld	hl,VBASE
+		ld	bc,VLINE*19
+		jp	con_clear_area
 
 msg_booting:	dbz "Boot"
 
