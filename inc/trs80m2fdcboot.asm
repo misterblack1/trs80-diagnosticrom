@@ -5,7 +5,10 @@
 
 hard_boot:
 		ld	sp,hd_stack_init
-		call	con_clear_kbd
+
+		ld	de,'HD';|$8080
+		call	show_boot_message
+		; call	con_clear_kbd
 
 hd_boot:
 		ld	d,21	; loop up to 21 times waiting for controller ready
@@ -21,14 +24,14 @@ hd_boot:
 		jr	nz,.hd_is_ready
 
 		; HD not ready. Is the user trying to abort the HD boot?
-		push	af
-		call	check_escape_key	; escape key pressed?
-		pop	af
-		jp	z,floppy_boot		;   yes, skip HD and boot FD
+		; push	af
+		; call	check_escape_key	; escape key pressed?
+		; pop	af
+		; jp	z,floppy_boot		;   yes, skip HD and boot FD
 		dec	d
 		jr	nz,.hd_wait_ready
 		ld	de,'HT'
-		jr	boot_err
+		jr	show_boot_error
 
 	.hd_is_ready:
 		; try to seek to track 5
@@ -69,8 +72,8 @@ hd_boot:
 		in	a,(hdc_status_reg)
 		bit	hdc_status_bit_data_request,a
 		jr	z,.hd_wait_for_drq
-		call	check_escape_key
-		jr	z,floppy_boot
+		; call	check_escape_key
+		; jr	z,floppy_boot
 
 		inc	b			; advance sector number
 		push	bc			; and save it for next iteration
@@ -89,13 +92,13 @@ hd_boot:
 
 		ld	bc,0
 		call	delay_bc		; delay by 1,703,915 t-states (0.42597875 sec @ 4MHz)
-		call	check_escape_key
-		jr	z,floppy_boot
+		; call	check_escape_key
+		; jr	z,floppy_boot
 
 		xor	a			; disable HD
 		out	(hdc_control_reg),a
 
-		call	erase_screen_show_cursor
+		call	con_clear
 
 		ex	de,hl			; jump to location after end sig
 		jp	(hl)
@@ -104,29 +107,37 @@ hd_err_from_err_reg:
 hd_tr0_not_found:
 		ld	de,'HD'
 
-boot_err:
-		call	erase_screen_show_cursor
 
-		ld	($FB9A),de
-		ld	ix,$FB9D
+boot_msg_start equ VBASE+(VLINE*21)+28
+show_boot_error:
+		; call	con_clear
+
+		ld	(boot_msg_start+boot_err_msg_len),de
+		ld	ix,boot_msg_start+boot_err_msg_len+3
+
+		; ld	($FB9A),de
+		; ld	ix,$FB9D
 		; call	con_printx
 		ld	e,a
 		call	print_biterrs
 
 		ld	hl,boot_err_msg
-		ld	de,$fb8e
+		ld	de,boot_msg_start
+		; ld	de,$fb8e
 		ld	bc,boot_err_msg_len
 		ldir
 
-wait_for_escape_key
-		call	check_escape_key
-		jr	nz,wait_for_escape_key
+		call	con_cursor_off
+	.spin:	jr .spin
+; wait_for_escape_key
+; 		call	check_escape_key
+; 		jr	nz,wait_for_escape_key
 
 
-erase_screen_show_cursor:
-		call	con_clear
-		call	con_cursor_on
-		ret
+; erase_screen_show_cursor:
+; 		; call	con_clear
+; 		; call	con_cursor_on
+; 		ret
 
 
 floppy_boot:
@@ -134,7 +145,9 @@ floppy_boot:
 		xor	a			; reset the HDC in case it was activated
 		out	(hdc_control_reg),a
 
-		call	con_clear_kbd
+		ld	de,'FD';|$8080
+		call	show_boot_message
+		; call	con_clear_kbd
 
 	.fd_wait_ready:
 		ld	a,fdc_sel_side_0+fdc_sel_dr_0
@@ -144,17 +157,19 @@ floppy_boot:
 		bit	7,a
 		jr	nz,.fd_wait_ready
 
-		call	fdc_terminate_cmd
+		call	fdc_terminate_cmd	; why this extra terminate?  Especially without a wait following?
 
 		; step in 5 tracks
 		call	fdc_step_in_5
 		; seek back to track 0
 		call	fdc_head_restore
+
 		ld	bc,0
-		call	pause_bc		; TODO: wait for drive ready, but with timeout
-		call	pause_bc
-		call	pause_bc
-		call	pause_bc
+		ld	d,7
+	.fd_restore_wait:	
+		call	delay_bc			; delay by 206 t-states (0.01998875 sec @ 4MHz)
+		dec	d
+		jr	nz,.fd_restore_wait		; TODO: wait for drive ready, but with timeout
 
 		; check FDC for errors
 		in	a,(fdc_status_reg)
@@ -164,7 +179,7 @@ floppy_boot:
 
 	.fd_read_boot:
 		; read the bootstrap code from track zero of the floppy (single density)
-		ld	hl,fd_load_addr	; HL = buffer
+		ld	hl,fd_load_addr			; HL = buffer
 		ld	de,(fd_load_sector_count*256)+fd_retry_count
 							; D = sector count
 							; E = retry count
@@ -174,8 +189,8 @@ floppy_boot:
 		ld	a,fdc_cmd_read_sector	; keep an FDC read command in A'
 		ex	af,af'
 
-fd_read_sector:
-		push	hl		; save copies of the arguments
+	.fd_read_sector:
+		push	hl			; save copies of the arguments
 		push	de
 		push	bc
 
@@ -218,7 +233,7 @@ fd_read_sector:
 		; read error
 		pop	hl			; restore original buffer pointer
 		dec	e			; any retries left?
-		jr	nz,fd_read_sector	; yes, go do it agin
+		jr	nz,.fd_read_sector	; yes, go do it agin
 
 		; read fail - retries exhausted
 		jr	fd_err
@@ -228,7 +243,7 @@ fd_read_sector:
 		inc	c			; increment sector number
 		ld	e,fd_retry_count	; restore retry count
 		dec	d			; decrement sector count
-		jr	nz,fd_read_sector	; if more sectors, loop
+		jr	nz,.fd_read_sector	; if more sectors, loop
 
 		ld	hl,fd_boot_sig_0
 		ld	de,$1000
@@ -243,7 +258,7 @@ fd_read_sector:
 		jr	nz,rs_err
 
 		; now clear the screen and call the boot code
-		call	erase_screen_show_cursor
+		call	con_clear
 
 		call	fd_boot_sig_1_loc+fd_boot_sig_1_len
 		jp	fd_boot_sig_0_loc+fd_boot_sig_0_len
@@ -258,18 +273,15 @@ rs_err:
 boot_err_deselect_fd:
 		push	af
 		call	fdc_terminate_cmd
-		ld	a,fdc_cmd_restore+fdc_cmd_step_rate_10ms
-		out	(fdc_cmd_reg),a
+		call	fdc_head_restore
 
 		ld	bc,0
-		call	delay_bc				; delay by 1,703,915 t-states (0.42597875 sec @ 4MHz)
+		call	delay_bc		; delay by 1,703,915 t-states (0.42597875 sec @ 4MHz)
 		call	fdc_terminate_cmd
-
-		ld	a,fdc_sel_side_0+fdc_sel_dr_none
-		out	(fdc_select_reg),a
+		call	fdc_deselect
 		pop	af
 
-		jp	boot_err
+		jp	show_boot_error
 
 
 delay_bc_5:			; delay by 135 T-states (33.75us @ 4MHz)
@@ -296,17 +308,18 @@ check_disk_signature:
 		djnz	check_disk_signature
 		ret
 
-; on return, zero flag set if escape or break pressed, clear if not
-check_escape_key:
-		in	a,(nmi_status_reg)
-		xor	$80
-		bit	nmi_status_bit_kbd_int,a
-		ret	nz
-		in	a,(kbd_data_reg)
-		cp	key_escape
-		ret	z
-		cp	key_break
-		ret
+; ; on return, zero flag set if escape or break pressed, clear if not
+; check_escape_key:
+; 		; in	a,(nmi_status_reg)
+; 		; xor	$80
+; 		; bit	nmi_status_bit_kbd_int,a
+; 		; ret	nz
+; 		; in	a,(kbd_data_reg)
+; 		call	con_get_key
+; 		cp	key_escape
+; 		ret	z
+; 		cp	key_break
+; 		ret
 
 
 ; returns with Z set and hdc_status_reg in A for no error
@@ -355,6 +368,27 @@ hd_check_present:
 		in	a,(hdc_drive_id_45)	; check ID of drive 4
 		and	$0f
 		ret
+
+show_boot_message:
+		push	de
+
+		ld	hl,VBASE+(VLINE*20)
+		ld	bc,VLINE*4
+		call	con_clear_area
+
+		pop	de
+		ld	(VBASE+(VLINE*20)+41),de
+		; ld	(VBASE+(VLINE*1)+41),de
+
+		ld	ix,VBASE+(VLINE*20)+36
+		; ld	ix,VBASE+(VLINE*1)+36
+		ld	hl,msg_booting
+		call	con_print
+
+		call	con_cursor_on
+		ret
+
+msg_booting:	dbz "Boot"
 
 hd_boot_end_sig:
 		db	"/* END BOOT */"

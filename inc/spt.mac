@@ -42,9 +42,11 @@ SPTHREAD_END .macro
 ; threaded code itself.
 SPTHREAD_SAVE .macro
 		exx
+		ex	af,af'		; save flags because of the add hl,sp instruction
 		ex	de,hl
 		ld	hl,0		; copy old sp to iy
 		add	hl,sp
+		ex	af,af'
 		exx
 .endm
 

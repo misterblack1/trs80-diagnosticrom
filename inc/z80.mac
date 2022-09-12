@@ -6,8 +6,19 @@ JR_PROMOTE defl 0
 	.jperror JP_ERROR
 	.jrpromote JR_PROMOTE
 
+dbi .macro string
+	irpc char,<string>
+		db	'`char`'|$80
+	.endm
+.endm
+
 dbz .macro string
-	db "`string`", 0
+		db "`string`", 0
+.endm
+
+dbiz .macro string
+		dbi "`string`"
+		db 0
 .endm
 
 nop12 .macro

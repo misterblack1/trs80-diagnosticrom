@@ -70,10 +70,10 @@ test_vram:
 		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
 		dw fdc_deselect
-		; dw spt_sim_error,$F0
 		dw spt_jp_nc, .vram_ok
 
-		dw chartest_fullscreen			; the VRAM tests bad.  Report and loop
+		;;;; the VRAM tests bad.  Report and loop
+		dw chartest_fullscreen
 	.vram_bad:
 		dw spt_call, sptc_blink_biterrs
 		dw spt_jp, .vram_bad
@@ -82,24 +82,23 @@ test_vram:
 	.vram_ok:
 		;;;; clear the screen, print charset at bottom, report the results of the VRAM test
 		dw con_clear
-		dw spt_con_index,9
+		dw spt_con_index,10
 		dw spt_con_print, msg_banner		; print the banner
 		dw spt_call, sptc_print_charset
 		dw spt_select_test, tp_vram
 		dw spt_call, sptc_announcetest 		; print results of VRAM tst
 		dw spt_con_print, msg_testok
 
-	.test_b1:
-		;;;; perform the test of the bank to which we are going to relocate some code
+	.test_dram:
+		;;;; Test DRAM.  Start by testint the bank to which we are going to relocate some code
 		dw spt_select_test, tp_rdest		; load the test parameters
 		dw spt_call, sptc_announcetest 		; announce what test we are about to run
 		dw tp_map_bank				; map in the bank to test (this unmaps VRAM)
 		dw memtestmarch				; test the current bank
 		dw mark_bank_map_vram
-		; dw vram_map				; map in VRAM so we can print results
-		; dw spt_sim_error, $C0
 		dw spt_jp_nc, .b1_ok
 
+		;;;; The bank at $4000 is bad, so report this and skip the relocation test
 		dw spt_call, sptc_print_errsmsg		; relocation destination is not OK
 		dw print_biterrs
 		dw spt_select_test, tp_low		; announce that we're skipping the relocating test
@@ -107,8 +106,8 @@ test_vram:
 		dw spt_con_print, msg_skipped		; we can't run the low test
 		dw spt_jp, .test_banked
 		
-
 	.b1_ok:
+		;;;; The bank at $4000 is ok, so run the relocation test
 		dw spt_con_print, msg_testok		; bank is good: print the OK message
 		dw spt_con_print, msg_reloc		; bank is good: print the OK message
 
@@ -117,66 +116,96 @@ test_vram:
 		dw spt_select_test, tp_low_reloc	; select the low mem test next
 		dw spt_call, sptc_announcetest
 		dw spt_call, sptc_relocated_test
-		dw mark_bank_map_vram
-		; dw vram_map				; map in VRAM so we can print results
-		; dw spt_sim_error, $C0
-		dw spt_jp_nc, .b0_ok
-		
-		dw spt_call, sptc_print_errsmsg
-		dw print_biterrs
-		dw spt_jp, .test_banked
-
-	.b0_ok:
-		dw spt_con_print, msg_testok		; bank is good: print the OK message
-
-
+		dw spt_call, sptc_bank_report
 
 	.test_banked:	
-		;;;; Loop through the rest fo the banks, testing each one
+		;;;; Start loopin through the rest of the banks, testing each one
 		dw spt_select_test, tp_high		; load the test table
 
 	.bank_loop:
+		;;;; top of the loop for each bank
+		dw con_get_key				; see if the user is forcing a boot with a key
+		dw spt_check_key,'1'			; press 1 for HD
+		dw spt_jp_z,spt_boot_hd
+		dw spt_check_key,$1B			; press ESC for floppy
+		dw spt_jp_z,spt_boot_fd
+		; dw check_boot_fd			; press 1 for floppy
+		dw spt_check_key,$20			; press ESC to run diags forever
+		dw spt_jp_z,.cancel_boot
+
+		;;;; check to see if auto-booting has been cancelled errors or ESC
 		dw spt_jp_mem_errs,.bank_test		; don't try to boot if there are errors
-		dw spt_jp_fdc_ready,.boot_floppy	; boot from the floppy if it is ready
+		dw spt_jp_fdc_ready,spt_boot_fd		; boot from the floppy if it is ready
+
 	.bank_test:
+		;;;; run one bank test
 		dw spt_call, sptc_announcetest 		; announce what test we are about to run
 		dw tp_map_bank
 		dw spt_jp_bank_dup, .bank_dup
 		dw memtestmarch				; test the current bank
-		dw mark_bank_map_vram
-		; dw vram_map
-		dw spt_jp_nc, .bank_ok
-		
-		dw spt_call, sptc_print_errsmsg
-		dw print_biterrs
-		dw spt_jp, .cont
+		dw spt_call, sptc_bank_report
 
-	.bank_dup:	
-		dw vram_map
-		dw spt_con_print, msg_dup
-		dw spt_call, sptc_printbank
-		dw spt_jp, .cont
-
-	.bank_ok:
-		dw spt_con_print, msg_testok		; bank is good: print the OK message
-
-	.cont:						; finished testing a bank.  What next?
-		dw spt_tp_next, .tested_all		; start over if we've reached the end
-		; dw spt_jp_fdc_ready,.boot_floppy	; boot from the floppy if it is ready
+	.bank_cont:						
+		;;;; Finished testing this bank.  Determine what to do next.
+		dw spt_tp_next, .table_done		; start over if we've reached the end
+		; dw spt_jp_fdc_ready,spt_boot_fd	; boot from the floppy if it is ready
 		dw spt_jp, .bank_loop			; else test the next bank
 
-	.tested_all:
-		dw spt_jp_mem_errs,.test_b1		; don't try to boot if there are errors
-		dw spt_jp_hd_present,.boot_hd
-		dw spt_jp, .test_b1
+	.bank_dup:
+		;;;; we've detected a duplicate bank (bank mapped in more than one place)
+		dw vram_map				; in this case, VRAM was not remapped, do it now
+		dw spt_con_print, msg_dup
+		dw spt_call, sptc_printbank
+		dw spt_jp, .bank_cont
 
-	.boot_floppy:					; TODO: distinguish betweeen floppy and HD boot
-		dw floppy_boot
-	.boot_hd:
-		dw hard_boot
+	.table_done:
+		;;;; reached the end of the table
+		dw spt_jp_mem_errs,.test_dram		; don't try to boot if there are errors
+		dw spt_jp_hd_present,spt_boot_hd	; boot from the HD if it's present
+		dw spt_jp, .test_dram
+
+	.cancel_boot:
+		dw cancel_boot
+		dw spt_jp, .bank_test
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
 
+; spt_print_boot_msg:
+; 		MAC_SPT_CON_GOTO 1,35
+; 		dw spt_con_print, msg_boot
+; 		dw spt_exit
+
+spt_boot_hd:
+		; dw spt_call,spt_print_boot_msg
+		; ; MAC_SPT_CON_GOTO 1,35
+		; ; dw spt_con_print, msg_boot
+		; dw spt_con_print, msg_hd
+		dw hard_boot
+spt_boot_fd:
+		; dw spt_call,spt_print_boot_msg
+		; ; MAC_SPT_CON_GOTO 1,35
+		; ; dw spt_con_print, msg_boot
+		; dw spt_con_print, msg_fd
+		dw floppy_boot
+
+
+sptc_bank_report:
+		; dw memtestmarch				; test the current bank
+		dw mark_bank_map_vram
+		dw spt_jp_nc, .bank_ok
+
+		dw spt_call, sptc_print_errsmsg
+		dw print_biterrs
+		dw spt_exit
+
+	.bank_ok:	
+		dw spt_con_print, msg_testok
+		dw spt_exit
+
+; check_boot_fd:
+; 		cp	'1'
+; 		jp	z,floppy_boot
+; 		ret
 
 spt_jp_bank_dup:
 		; determine if this bank is a different, already tested bank
@@ -208,9 +237,14 @@ spt_jp_bank_dup:
 spt_jp_mem_errs:
 		pop	hl				; get the address to jump to if there are errors
 		ld	a,(VBASE)
-		cp	'!'				; if there is no exclamation point
-		ret	nz				; continue
+		cp	' '				; if there is no exclamation point
+		ret	z				; continue
 		ld	sp,hl				; else go to new thread location
+		ret
+
+cancel_boot:
+		ld	a,'!'
+		ld	(VBASE),a
 		ret
 
 
@@ -227,6 +261,7 @@ mark_bank_map_vram:
 
 		ex	af,af'				; restore the saved flags
 		ret	nc				; return if the test had no error
+		; ex	af,af'				; save flags
 
 		ld	a,$ff				; see if this is a an absent bank
 		cp	e
@@ -235,6 +270,7 @@ mark_bank_map_vram:
 		ld	a,'!'				; not absent, but bad; note this with the exclamation
 		ld	(VBASE),a			; put an exclamation in the corner if this bank is bad
 	.absent:
+		; ex	af,af'				; restore the saved flags
 		scf					; set the carry flag again
 		ret
 
@@ -281,7 +317,7 @@ spt_jp_hd_present:
 		ld	a,hdc_control_deven+hdc_control_wait_enable+hdc_control_intrq_enable+hdc_control_dma_enable
 		out	(hdc_control_reg),a
 
-		in	a,(hdc_drive_id_45)	; check ID of drive 4
+		in	a,(hdc_drive_id_45)		; check ID of drive 4
 		and	$0f
 
 		pop	hl
@@ -551,64 +587,77 @@ sptc_blink_biterrs:
 		dw spt_blink_bit_rl
 		dw spt_blink_bit_rl
 		dw spt_pause, $00
-		dw spt_pause, $00
-		dw spt_pause, $00
+		; dw spt_pause, $00
+		; dw spt_pause, $00
+		dw pause_bc
+		dw pause_bc
 		dw spt_exit
 
-ld_a_0:
-		ld	a,0
-		ret
+; ld_a_0:
+; 		ld	a,0
+; 		ret
 
 sptc_print_charset:
-		MAC_SPT_CON_GOTO 20,-8
-		dw ld_a_0
-		dw spt_charset_40
-		dw spt_charset_40
-		dw spt_charset_40
-		dw spt_charset_40
+		; MAC_SPT_CON_GOTO 20,-8
+		; dw ld_a_0
+		dw spt_charset_64_p16_start
+		dw spt_charset_64_p16
+		dw spt_charset_64_p16
+		dw spt_charset_64_p16
 		dw spt_exit
 
-spt_charset_40:
+spt_charset_64_p16_start:
+		ld	hl,VBASE+(VLINE*20)-8
+		xor	a
+spt_charset_64_p16:
 		ld	bc,$10
-		add	ix,bc
+		add	hl,bc
 		ld	bc,$40
+		; ld	bc,$10
+		; add	ix,bc
+		; ld	bc,$40
 		jr	charset_here
 chartest_fullscreen:
-		ld	ix,VBASE
+		ld	hl,VBASE
+		; ld	ix,VBASE
 		ld	bc,VSIZE
 charset_here:
 	.charloop:
-		ld	(ix+0),a	; copy A to byte pointed by HL
+		ld	(hl),a
+		; ld	(ix+0),a	; copy A to byte pointed by HL
 		inc	a		; increments A
-		inc	ix
+		; inc	ix
 		cpi			; increments HL, decrements BC (and does a CP)
 		jp	pe, .charloop
 		ret
 
 
-V_END = (VBASE+VSIZE-1)
+; V_END = (VBASE+VSIZE-1)
 
+
+
+; msg_boot:	dbz "Booting "
+; msg_hd:		dbz "HD"
+; msg_fd:		dbz "FD"
 
 labels_start:
-label_vram:	dbz " 2K VRAM "
-label_dram16:	dbz "16K DRAM "
-label_bank16:	dbz "16K page "
+label_vram:	dbz	" 2K VRAM "
+label_dram16:	dbz	"16K DRAM "
+label_bank16:	dbz	"16K page "
 
-msg_dash:	dbz "-"
-msg_space:	dbz " "
-msg_banner:	dbz "TRS-80 M2 Test ROM - Frank IZ8DWF / Dave KI3V / Adrian Black"
-msg_charset:	dbz "charset:"
-; msg_testing:	dbz "..test.. "
-; msg_testok:	dbz "---OK--- "
-; msg_biterrs:	dbz "BIT ERRS "
-; msg_testing:	dbz " >test< "
-msg_testok:	dbz " --OK-- "
-msg_reloc:	dbz "(reloc) "
-msg_skipped:	dbz " *skip* "
-msg_biterrs:	dbz " errors:"
-msg_absent:	dbz " absent:"
-msg_dup:	dbz "  DUP "
-msg_testing:	db " ", " "+$80, "t"+$80, "e"+$80, "s"+$80, "t"+$80, " "+$80, " ", 0
+msg_dash:	dbz	"-"
+msg_space:	dbz	" "
+msg_banner:	dbiz	"TRS-80 M2 Test ROM - Frank IZ8DWF / Dave KI3V / Adrian Black"
+msg_testok:	dbz	" --OK-- "
+msg_reloc:	dbz	"(reloc) "
+msg_skipped:	dbz	" *skip* "
+msg_biterrs:	dbz	" errors:"
+msg_absent:	dbz	" absent:"
+msg_dup:	dbz	"  DUP "
+msg_testing:	db	" "
+		dbi	" TEST "
+		dbz	" "
+; msg_testing:	db " ", " "+$80, "t"+$80, "e"+$80, "s"+$80, "t"+$80, " "+$80, " ", 0
 status_backup equ $-msg_testing-1
 
 ; test parameter table. 2-byte entries:
@@ -723,11 +772,7 @@ tp_high:	db	$40, $80, $1, label_bank16-labels_start
 relocate_memtest:
 		ld	de,reloc_dst_begin
 		ld	hl,reloc_src_begin
-		ld	bc,reloc_dst_end-reloc_dst_begin
-		ldir
-		ld	de,relocated_memtest
-		ld	hl,memtestmarch
-		ld	bc,memtestmarch_end-memtestmarch
+		ld	bc,reloc_size
 		ldir
 		ret
 
@@ -764,11 +809,12 @@ rom_map:
 tp_low_reloc:	db	$40, $00, $0, label_dram16-labels_start
 		dw 	VBASE+( 3*VLINE)+COL1
 
-
-
-reloc_dst_end:
-relocated_memtest equ $
+relocated_memtest:
 		.dephase
+
+.include "inc/memtestmarch.asm"
+
+reloc_size equ relocated_memtest - reloc_dst_begin + $ - memtestmarch
 
 ; End of relocated section. 
 ; (But note, the code will place a copy of the memtestmarch routine right 
@@ -779,7 +825,6 @@ relocated_memtest equ $
 
 .include "inc/trs80m2fdcboot.asm"
 .include "inc/spt.asm"
-.include "inc/memtestmarch.asm"
 .include "inc/trs80m2con.asm"
 ; include "inc/trs80m2music.asm"
 

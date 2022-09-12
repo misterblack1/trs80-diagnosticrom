@@ -14,9 +14,6 @@ con_print:
 	.done:
 		ret
 
-
-
-
 mac_con_printc macro reg
 		ld (ix+0), reg
 		inc ix
@@ -75,6 +72,7 @@ con_NL:
 con_clear:
 		ld hl,VBASE
 		ld bc,VSIZE
+con_clear_area:
 	.loop:
 		ld (hl),20h
 		cpi
@@ -114,35 +112,24 @@ crtc_setup_table:
 		db $09			; $B: Cursor End = 9
 		db $00			; $C: Start Address H = 0
 		db $00			; $D: Start Address L = 0
-		db $03			; $E: Cursor H (HL = $3E9)
-		db $E9			; $F: Cursor H (decimal 1001, center of screen)
+		; db high ((VLINE*12)+39)	; $E: Cursor H (HL = $3E9)
+		; db low ((VLINE*12)+39)	; $F: Cursor L (decimal 1001, center of screen)
+		db high ((VLINE*21)+39)	; $E: Cursor H (HL = $3E9)
+		db low ((VLINE*21)+39)	; $F: Cursor H (decimal 1001, center of screen)
 crtc_setup_len equ $-crtc_setup_table
 
-; ; modified for 64x24 operation
-; crtc_setup_table:
-; 		db $63			; Horizontal Total = 99
-; 		db $40			; Horizontal Displayed = 80
-; 		db $55			; H Sync Position = 85
-; 		db $08			; Sync Width = 8
-; 		db $19			; Vertical Total = 25
-; 		db $00			; V Total Adjust = 0
-; 		db $18			; Vertical Displayed = 24
-; 		db $18			; Vertical Sync Position = 24
-; 		db $00			; Interlace Mode and Skew = 0
-; 		db $09			; Max Scan Line Address = 9
-; 		db 00100101b		; Cursor Start = 5 (b6:blink on, b5=blink period ct)
-; 		db $09			; Cursor End = 9
-; 		db $00			; Start Address H = 0
-; 		db $00			; Start Address L = 0
-; 		db $03			; Cursor H (HL = $3E9)
-; crtc_setup_last	db $E9			; Cursor H (decimal 1001, center of screen)
 
+con_cursor_off:
+		ld	d,00100101b
+		jr	con_cursor_set
 con_cursor_on:
+		ld	d,01100101b	; turn on the cursor
+con_cursor_set:
 		ld	bc,$0AFC	; point at the CRTC address port
 		out	(c),b		; select the cursor control register
 		inc	c		; point at the CRTC data port
 		ld	b,01100101b	; turn on the cursor
-		out	(c),b
+		out	(c),d
 		ret
 
 con_clear_kbd:
@@ -159,4 +146,25 @@ con_clear_kbd:
 		; call	delay_bc		; delay by 3333 t-states (833.25us @ 4MHz)
 		dec	d
 		jr	nz,.loop
+		ret
+
+con_get_key:
+		in	a,(nmi_status_reg)
+		xor	$80
+		bit	nmi_status_bit_kbd_int,a
+		jr	nz,.nokey
+		in	a,(kbd_data_reg)
+		ret
+	.nokey: sub	a
+		ret
+
+spt_check_key:
+		pop	bc
+		cp	c
+		ret
+
+spt_jp_z:
+		pop	hl
+		ret	nz
+		ld	sp,hl
 		ret
