@@ -69,7 +69,7 @@ test_vram:
 		dw spt_call, sptc_fdc_reset_head
 		dw spt_select_test, tp_vram
 		dw memtestmarch				; test the VRAM
-		dw fdc_deselect
+		dw fdc_select_none
 		dw spt_jp_nc, .vram_ok
 
 		;;;; the VRAM tests bad.  Report and loop
@@ -88,29 +88,24 @@ test_vram:
 		dw spt_select_test, tp_vram
 		dw spt_call, sptc_announcetest 		; print results of VRAM tst
 		dw spt_con_print, msg_testok
+		dw con_clear_kbd
 
-	.test_dram:
+	.test_4000:
 		;;;; Test DRAM.  Start by testint the bank to which we are going to relocate some code
 		dw spt_select_test, tp_rdest		; load the test parameters
 		dw spt_call, sptc_announcetest 		; announce what test we are about to run
 		dw tp_map_bank				; map in the bank to test (this unmaps VRAM)
-		dw memtestmarch				; test the current bank
-		dw mark_bank_map_vram
-		dw spt_jp_nc, .b1_ok
+		dw spt_call, sptc_bank_test_and_report
+		dw spt_jp_nc, .test_0000
 
 		;;;; The bank at $4000 is bad, so report this and skip the relocation test
-		dw spt_call, sptc_print_errsmsg		; relocation destination is not OK
-		dw print_biterrs
 		dw spt_select_test, tp_low		; announce that we're skipping the relocating test
 		dw spt_call, sptc_announcetest		; 
 		dw spt_con_print, msg_skipped		; we can't run the low test
 		dw spt_jp, .test_banked
 		
-	.b1_ok:
+	.test_0000:
 		;;;; The bank at $4000 is ok, so run the relocation test
-		dw spt_con_print, msg_testok		; bank is good: print the OK message
-		dw spt_con_print, msg_reloc		; bank is good: print the OK message
-
 		;;;; relocate the memory test into upper half of low RAM, unmap ROM, run test on lowest RAM
 		dw relocate_memtest
 		dw spt_select_test, tp_low_reloc	; select the low mem test next
@@ -124,17 +119,9 @@ test_vram:
 
 	.bank_loop:
 		;;;; top of the loop for each bank
-		dw con_get_key				; see if the user is forcing a boot with a key
-		dw spt_check_key,'1'			; press 1 for HD
-		dw spt_jp_z,spt_boot_hd
-		dw spt_check_key,$1B			; press ESC for floppy
-		dw spt_jp_z,spt_boot_fd
-		; dw check_boot_fd			; press 1 for floppy
-		dw spt_check_key,$20			; press ESC to run diags forever
-		dw spt_jp_z,.cancel_boot
-
+		dw check_boot_keys
 		;;;; check to see if auto-booting has been cancelled errors or ESC
-		dw spt_jp_mem_errs,.bank_test		; don't try to boot if there are errors
+		dw spt_jp_boot_cancelled,.bank_test		; don't try to boot if there are errors
 		dw spt_jp_fdc_ready,spt_boot_fd		; boot from the floppy if it is ready
 
 	.bank_test:
@@ -142,8 +129,7 @@ test_vram:
 		dw spt_call, sptc_announcetest 		; announce what test we are about to run
 		dw tp_map_bank
 		dw spt_jp_bank_dup, .bank_dup
-		dw memtestmarch				; test the current bank
-		dw spt_call, sptc_bank_report
+		dw spt_call, sptc_bank_test_and_report
 
 	.bank_cont:						
 		;;;; Finished testing this bank.  Determine what to do next.
@@ -160,37 +146,55 @@ test_vram:
 
 	.table_done:
 		;;;; reached the end of the table
-		dw spt_jp_mem_errs,.test_dram		; don't try to boot if there are errors
+		dw spt_jp_boot_cancelled,.test_4000		; don't try to boot if there are errors
 		dw spt_jp_hd_present,spt_boot_hd	; boot from the HD if it's present
-		dw spt_jp, .test_dram
+		dw spt_jp, .test_4000
 
-	.cancel_boot:
-		dw cancel_boot
-		dw spt_jp, .bank_test
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
 
-; spt_print_boot_msg:
-; 		MAC_SPT_CON_GOTO 1,35
-; 		dw spt_con_print, msg_boot
-; 		dw spt_exit
+check_boot_keys:
+		in	a,(nmi_status_reg)		; see if there is a key available
+		bit	nmi_status_bit_kbd_int,a
+		ret	z				; just return if no key pressed
+		in	a,(kbd_data_reg)
+		cp	$1B				; press ESC for floppy
+		jp	z,boot_fd0
+		cp	$03				; press BREAK for floppy
+		jp	z,boot_fd0
+		cp	'1'				; press 1 for hard disk
+		jp	z,boot_hd0
+		cp	' '				; space to cancel booting and loop tests
+		ret	nz				; just continue if no match
+		ld	a,(VBASE)
+		cp	' '
+		jr	z,.cancel
+		ld	a,' '
+		ld	(VBASE),a
+		ret
+	.cancel:
+		ld	a,'!'				; mark to skip booting
+		ld	(VBASE),a
+		ret
+
 
 spt_boot_hd:
 		; dw spt_call,spt_print_boot_msg
 		; ; MAC_SPT_CON_GOTO 1,35
 		; ; dw spt_con_print, msg_boot
 		; dw spt_con_print, msg_hd
-		dw hard_boot
+		dw boot_hd0
 spt_boot_fd:
 		; dw spt_call,spt_print_boot_msg
 		; ; MAC_SPT_CON_GOTO 1,35
 		; ; dw spt_con_print, msg_boot
 		; dw spt_con_print, msg_fd
-		dw floppy_boot
+		dw boot_fd0
 
 
+sptc_bank_test_and_report:
+		dw memtestmarch				; test the current bank
 sptc_bank_report:
-		; dw memtestmarch				; test the current bank
 		dw mark_bank_map_vram
 		dw spt_jp_nc, .bank_ok
 
@@ -202,10 +206,6 @@ sptc_bank_report:
 		dw spt_con_print, msg_testok
 		dw spt_exit
 
-; check_boot_fd:
-; 		cp	'1'
-; 		jp	z,floppy_boot
-; 		ret
 
 spt_jp_bank_dup:
 		; determine if this bank is a different, already tested bank
@@ -234,19 +234,13 @@ spt_jp_bank_dup:
 		ld	sp,hl
 		ret
 
-spt_jp_mem_errs:
+spt_jp_boot_cancelled:
 		pop	hl				; get the address to jump to if there are errors
 		ld	a,(VBASE)
 		cp	' '				; if there is no exclamation point
 		ret	z				; continue
 		ld	sp,hl				; else go to new thread location
 		ret
-
-cancel_boot:
-		ld	a,'!'
-		ld	(VBASE),a
-		ret
-
 
 mark_bank_map_vram:
 		ex	af,af'				; save flags
@@ -330,6 +324,7 @@ sptc_fdc_terminate_ready_timeout:
 		dw	ld_d_0				; wait up to 256 times, then fail out
 	.loop:	dw	fdc_terminate_cmd
 		dw	spt_jp_fdc_ready,.done
+		dw	spt_pause,$0500
 		dw	spt_dec_d_jp_nz,.loop
 	.done:	dw	spt_exit
 
@@ -358,16 +353,14 @@ fdc_select:
 	.dly1:	djnz	.dly1
 		ret
 
-fdc_deselect:
-		ld	a,fdc_sel_dr_none		; deselect the drive
-		out	(fdc_select_reg),a
-		ret
+; fdc_deselect:
+; 		ld	a,fdc_sel_dr_none		; deselect the drive
+; 		out	(fdc_select_reg),a
+; 		ret
 
 fdc_step_in_5:
 		ld	c,5
 fdc_step_in:
-		; pop	bc				; how many tracks (only C is significant)
-
 	.silp:	ld	a,fdc_cmd_step_in|fdc_cmd_update_track|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
 		out	(fdc_cmd_reg),a
 
@@ -376,10 +369,11 @@ fdc_step_in:
 
 	.wrdy1:	in	a,(fdc_status_reg)		; wait for ready indication
 		bit	0,a
+		; and	$81
 		jr	nz,.wrdy1
 	
 		dec	c
-		jr	nz,.silp			; repeate the stepping
+		jr	nz,.silp		; repeate the stepping
 		ret
 
 fdc_head_restore:
@@ -394,9 +388,17 @@ sptc_fdc_reset_head:
 		dw spt_call, sptc_fdc_terminate_ready_timeout
 		dw fdc_step_in_5
 		dw fdc_head_restore
-		dw spt_pause,1599
+		; dw spt_pause,1599
+		dw spt_pause,2000
 		dw spt_exit
 
+; fdc_head_unload:
+; 		ld	a,fdc_cmd_restore|fdc_cmd_head_load|fdc_cmd_step_rate_15ms
+; 		out	(fdc_cmd_reg),a			; restore head to track zero
+; 		ret
+
+; sptc_fdc_release_head:
+; 		dw
 
 
 ; test if the e register matches 7-bit vram and jump to spt address if match
@@ -649,7 +651,7 @@ msg_dash:	dbz	"-"
 msg_space:	dbz	" "
 msg_banner:	dbiz	"TRS-80 M2 Test ROM - Frank IZ8DWF / Dave KI3V / Adrian Black"
 msg_testok:	dbz	" --OK-- "
-msg_reloc:	dbz	"(reloc) "
+; msg_reloc:	dbz	"(reloc) "
 msg_skipped:	dbz	" *skip* "
 msg_biterrs:	dbz	" errors:"
 msg_absent:	dbz	" absent:"

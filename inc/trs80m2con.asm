@@ -148,23 +148,25 @@ con_clear_kbd:
 		jr	nz,.loop
 		ret
 
-con_get_key:
-		in	a,(nmi_status_reg)
-		xor	$80
-		bit	nmi_status_bit_kbd_int,a
-		jr	nz,.nokey
-		in	a,(kbd_data_reg)
-		ret
-	.nokey: sub	a
-		ret
+; con_get_key:
+; 		in	a,(nmi_status_reg)
+; 		bit	nmi_status_bit_kbd_int,a
+; 		jr	z,.nokey
+; 		; xor	$80
+; 		; bit	nmi_status_bit_kbd_int,a
+; 		; jr	nz,.nokey
+; 		in	a,(kbd_data_reg)
+; 		ret
+; 	.nokey: sub	a
+; 		ret
 
-spt_check_key:
-		pop	bc
-		cp	c
-		ret
+; spt_check_key:
+; 		pop	bc
+; 		cp	c
+; 		ret
 
-spt_jp_z:
-		pop	hl
-		ret	nz
-		ld	sp,hl
-		ret
+; spt_jp_z:
+; 		pop	hl
+; 		ret	nz
+; 		ld	sp,hl
+; 		ret

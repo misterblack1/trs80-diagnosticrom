@@ -2,16 +2,21 @@
 
 ; .include "inc/m2.inc"
 
+;;;;----------------------------------------------------------------------------------------------
+;;;; boot_hd0
+;;;;----------------------------------------------------------------------------------------------
 
-hard_boot:
+boot_hd0:
+		ld	a,$80			; map bank 1 and VRAM just in case
+		out	($FF),a
+
 		ld	sp,hd_stack_init
 
 		ld	de,'HD';|$8080
 		call	show_boot_message
-		; call	con_clear_kbd
 
-hd_boot:
 		ld	d,21	; loop up to 21 times waiting for controller ready
+		; ld	bc,0
 	.hd_wait_ready:
 		call	delay_bc		; delay by 551 t-states (137.75us @4MHz)
 
@@ -23,11 +28,6 @@ hd_boot:
 		bit	hdc_status_bit_ready,a
 		jr	nz,.hd_is_ready
 
-		; HD not ready. Is the user trying to abort the HD boot?
-		; push	af
-		; call	check_escape_key	; escape key pressed?
-		; pop	af
-		; jp	z,floppy_boot		;   yes, skip HD and boot FD
 		dec	d
 		jr	nz,.hd_wait_ready
 		ld	de,'HT'
@@ -135,8 +135,14 @@ show_boot_error:
 		call	con_cursor_off
 	.spin:	jr .spin
 
+;;;;----------------------------------------------------------------------------------------------
+;;;; boot_fd0
+;;;;----------------------------------------------------------------------------------------------
 
-floppy_boot:
+boot_fd0:
+		ld	a,$80			; map bank 1 and VRAM just in case
+		out	($FF),a
+
 		ld	sp,fd_stack_init	; etablish a stack
 		xor	a			; reset the HDC in case it was activated
 		out	(hdc_control_reg),a
@@ -146,32 +152,36 @@ floppy_boot:
 		; call	con_clear_kbd
 
 	.fd_wait_ready:
-		ld	a,fdc_sel_side_0+fdc_sel_dr_0
-		out	(fdc_select_reg),a
+		call	fd_wait_ready_d0s0
+		; call	fdc_select_d0s0
 
-		call	fdc_terminate_cmd
-		bit	7,a
-		jr	nz,.fd_wait_ready
+		; call	fdc_terminate_cmd
+		; bit	7,a
+		; jr	nz,.fd_wait_ready
 
-		; call	fdc_terminate_cmd	; why this extra terminate?  Especially without a wait following?
+		call	fdc_terminate_cmd	; why this extra terminate?  Especially without a wait following?
 
 		; step in 5 tracks
 		call	fdc_step_in_5
+		; call	fd_wait_ready
 		; seek back to track 0
 		call	fdc_head_restore
+		call	fd_wait_busy
+		call	fd_wait_ready
 
-		ld	bc,0
-		ld	d,7
-	.fd_restore_wait:	
-		call	delay_bc			; delay by 206 t-states (0.01998875 sec @ 4MHz)
-		dec	d
-		jr	nz,.fd_restore_wait		; TODO: wait for drive ready, but with timeout
+	; 	ld	bc,0
+	; 	ld	d,7
+	; .fd_restore_wait:	
+	; 	call	delay_bc			; delay by 206 t-states (0.01998875 sec @ 4MHz)
+	; 	dec	d
+	; 	jr	nz,.fd_restore_wait		; TODO: wait for drive ready, but with timeout
 
 		; check FDC for errors
 		in	a,(fdc_status_reg)
 		xor	fdc_status_track_zero	; error when zero
 		and	fdc_status_seek_err+fdc_status_track_zero+fdc_status_busy+fdc_status_bit_not_ready+fdc_status_bit_crc_err
-		jr	nz,fd_err
+		jr	nz,sk_err
+
 
 	.fd_read_boot:
 		; read the bootstrap code from track zero of the floppy (single density)
@@ -182,8 +192,8 @@ floppy_boot:
 		ld	bc,(fd_load_sector_size*256)+1	; B = sector size (128)
 							; C = sector number (1)
 
-		ld	a,fdc_cmd_read_sector	; keep an FDC read command in A'
-		ex	af,af'
+		; ld	a,fdc_cmd_read_sector	; keep an FDC read command in A'
+		; ex	af,af'
 
 	.fd_read_sector:
 		push	hl			; save copies of the arguments
@@ -195,13 +205,16 @@ floppy_boot:
 		ld	a,c			; give FDC the sector number
 		out	(fdc_sector_reg),a
 
-		ex	af,af'			; give FDC command from A'
+		; ex	af,af'			; give FDC command from A'
+		ld	a,fdc_cmd_read_sector
 		out	(fdc_cmd_reg),a
-		ex	af,af'
+		; ex	af,af'
 
-		call	delay_bc_5		; delay by 135 t-states (33.75us @4MHz)
-		pop	bc			; get original sector size, number back
-		push	bc
+		call	fd_wait_busy
+
+		; call	delay_bc_5		; delay by 135 t-states (33.75us @4MHz)
+		; pop	bc			; get original sector size, number back
+		; push	bc
 
 		ld	c,fdc_data_reg		; prepare for ini instruction
 
@@ -232,7 +245,7 @@ floppy_boot:
 		jr	nz,.fd_read_sector	; yes, go do it agin
 
 		; read fail - retries exhausted
-		jr	fd_err
+		jr	rd_err
 
 	.fd_read_ok:
 		pop	af			; discard original buffer pointer
@@ -259,8 +272,13 @@ floppy_boot:
 		call	fd_boot_sig_1_loc+fd_boot_sig_1_len
 		jp	fd_boot_sig_0_loc+fd_boot_sig_0_len
 
-fd_err:
-		ld	de,'FD'
+
+sk_err:
+		ld	de,'SK'
+		jr	boot_err_deselect_fd
+
+rd_err:
+		ld	de,'RD'
 		jr	boot_err_deselect_fd
 
 rs_err:
@@ -274,7 +292,7 @@ boot_err_deselect_fd:
 		ld	bc,0
 		call	delay_bc		; delay by 1,703,915 t-states (0.42597875 sec @ 4MHz)
 		call	fdc_terminate_cmd
-		call	fdc_deselect
+		call	fdc_select_none
 		pop	af
 
 		jp	show_boot_error
@@ -303,19 +321,6 @@ check_disk_signature:
 		inc	de
 		djnz	check_disk_signature
 		ret
-
-; ; on return, zero flag set if escape or break pressed, clear if not
-; check_escape_key:
-; 		; in	a,(nmi_status_reg)
-; 		; xor	$80
-; 		; bit	nmi_status_bit_kbd_int,a
-; 		; ret	nz
-; 		; in	a,(kbd_data_reg)
-; 		call	con_get_key
-; 		cp	key_escape
-; 		ret	z
-; 		cp	key_break
-; 		ret
 
 
 ; returns with Z set and hdc_status_reg in A for no error
@@ -349,21 +354,24 @@ hd_wait_not_busy:
 		in	a,(hdc_error_reg)
 		ret
 
-hd_check_present:
-		; reset HDC and check for drive presence
-		xor	a
-		out	(hdc_control_reg),a
-		ld	a,hdc_control_soft_reset
-		out	(hdc_control_reg),a
-
-		; Earlier versions of the boot ROM didn't enable interrupt and DMA.  Not sure
-		; why this is a good idea.
-		ld	a,hdc_control_deven+hdc_control_wait_enable+hdc_control_intrq_enable+hdc_control_dma_enable
-		out	(hdc_control_reg),a
-
-		in	a,(hdc_drive_id_45)	; check ID of drive 4
-		and	$0f
+fd_wait_ready_d0s0:
+		ld	a,fdc_sel_side_0|fdc_sel_dr_0	; select d0s0
+		out	(fdc_select_reg),a
+		ld	b,0				; short delay for FDC to respond
+	.dly1:	djnz	.dly1
+fd_wait_ready:
+	.loop:	in	a,(fdc_status_reg)
+		and	$81
+		jr	nz,.loop
 		ret
+
+fd_wait_busy:
+		in	a,(fdc_status_reg)
+		and	$01
+		jr	z,fd_wait_busy
+		ret
+
+
 
 boot_message_line equ 20
 boot_message_pos equ VBASE+(VLINE*boot_message_line)+36
@@ -383,10 +391,6 @@ show_boot_message:
 		ld	bc,boot_message_len
 		ldir
 
-		; ld	ix,boot_message_start
-		; ld	hl,msg_booting
-		; call	con_print
-
 		call	con_cursor_on
 		ret
 
@@ -395,7 +399,6 @@ boot_clear_screen:
 		ld	bc,VLINE*19
 		jp	con_clear_area
 
-msg_booting:	dbz "Boot"
 
 hd_boot_end_sig:
 		db	"/* END BOOT */"

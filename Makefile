@@ -22,16 +22,17 @@ realclean: clean
 
 $(BDSFILES): %.bds: %.bin
 
+ASSEMBLE = $(ZMAC) --zmac -m --od . --oo cim,bds,lst,hex
 
 %.bin: %.asm Makefile
-	@echo $(ZMAC) --zmac -m --od . --oo cim,bds,lst,hex $<
-	@-$(SGR_YELLOW)
-	@$(ZMAC) --zmac -m --od . --oo cim,bds,lst,hex $<
-	@-$(SGR_RESET)
-	$(REN) $(<:%.asm=%.cim) $@
-	@-$(SGR_GREEN)
+	@-$(CECHO) $(SGR_COMMAND) $(ASSEMBLE) $< $(SGR_RESET)
+	@-$(CECHON) $(SGR_OUTPUT)
+	@$(ASSEMBLE) $<
+	@-$(CECHON) $(SGR_RESET)
+	@$(REN) $(<:%.asm=%.cim) $@
+	@-$(CECHON) $(SGR_SIZE)
 	@$(STAT) "%N: %z %Xz" $@
-	@-$(SGR_RESET)
+	@-$(CECHON) $(SGR_RESET)
 
 
 .PHONY: emu 
