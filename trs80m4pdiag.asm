@@ -60,77 +60,315 @@ reset:
 		djnz	.crtclp				; BUG: (this should be R0) Repeat for next register, down to R1
 
 
-	; .init_crtc:
-	; 	ld	bc,$0FFC			; count $0F, port $FC crtc address reg
-	; 	ld	hl,crtc_setup_table+crtc_setup_len-1
-	; .loop:	ld	a,(hl)				; fetch bytes from setup table and send top to bottom
-	; 	out	(c),b				; CRTC address register
-	; 	out	($FD),a				; CRTC data register
-	; 	dec	hl
-	; 	dec	b
-	; 	jp	p,.loop
-
-
 test_vram:
 		SPTHREAD_BEGIN				; set up to begin running threaded code
-		dw vram_map_p1				; map in VRAM so we can print results
-		; dw chartest_fullscreen
-		dw con_clear
-		dw chartest_once
-		dw spinhalt
+		dw spt_playmusic, tones_welcome
+
+		dw crtc_80p0
+		dw spt_chartest
+		dw crtc_80p1
+		dw spt_chartest
+		dw spt_pause, $0000
+		dw spt_pause, $0000
+		dw spt_pause, $0000
+		dw spt_pause, $0000
+		dw spt_pause, $0000
+		dw spt_pause, $0000
+
+		dw vram_map_p0
+		dw spt_select_test, tp_vram0
+		dw memtestmarch				; test the VRAM
+		dw spt_jp_nc, .vram0_ok
+
+	.vram_bad:
+		dw spt_chartest
+	.vram_bad_loop:
+		dw spt_play_testresult			; play the tones for bit errors
+		dw spt_pause, $0000
+		dw spt_jp,.vram_bad_loop
+
+	.vram0_ok:
+		dw spt_prepare_display
+		MAC_SPT_CON_GOTO 1,0
+		dw spt_announcetest 			; print results of VRAM tst
+		dw spt_con_print, msg_testok
+		dw spt_playmusic, tones_vramgood	; play the VRAM good tones
+
+		dw vram_map_p1
+		dw spt_select_test, tp_vram1
+		dw memtestmarch				; test the VRAM
+		dw spt_jp_nc, .vram1_ok
+		dw vram_map_p0
+		dw spt_jp, .vram_bad
+	
+	.vram1_ok:
+		dw vram_map_p0
+		MAC_SPT_CON_GOTO 2,0
+		dw spt_announcetest 			; print results of VRAM tst
+		dw spt_con_print, msg_testok
+		dw spt_playmusic, tones_vramgood	; play the VRAM good tones
+
+
+	.test_dram:
+		dw map_dram0
+		dw spt_select_test, tp_dram_lo		; load the first test
+		MAC_SPT_CON_GOTO 4,0
+
+	.loop:
+		dw spt_call, sptc_runtest
+
+		dw map_dram2
+		dw spt_select_test, tp_bank_lo		; load the first test
+		dw spt_call, sptc_runtest
+
+		dw map_dram3
+		dw spt_select_test, tp_bank_hi		; load the first test
+		dw spt_call, sptc_runtest
+
+
+	; .cont:
+	; 	; dw spinhalt
+		dw spt_tp_next, .test_dram
+		dw spt_jp, .loop
+
+	
+	.halt:	dw spinhalt
 
 spinhalt:
 	.here:	jr .here
 
+
+sptc_runtest:
+		dw spt_announcetest 			; announce what test we are about to run
+		dw memtestmarch				; test the current bank
+		dw spt_jp_nc, .ok
+		
+		dw spt_con_print, msg_biterrs		; we have errors: print the bit string
+		dw print_biterrs
+		dw spt_play_testresult			; play the tones for bit errors
+		dw spt_jp, .cont
+	
+	.ok:
+		dw spt_con_print, msg_testok		; bank is good: print the OK message
+		dw spt_play_testresult			; play the tones
+
+	.cont:
+		dw spt_exit
+
+
+spt_prepare_display:
+		SPTHREAD_ENTER
+		dw con_clear
+		dw spt_con_print, msg_banner		; print the banner
+		dw con_NL
+		dw spt_print_charset
+		dw spt_exit
+
+
+crtc_64:
+		ld	a,OPREG_64
+		out	(IOW_OPREG),a
+		ret
+
+crtc_80p0:
+		ld	a,OPREG_80
+		out	(IOW_OPREG),a
+		ret
+
+crtc_80p1:
+		ld	a,OPREG_80|OPREG_VIDPAGE_1
+		out	(IOW_OPREG),a
+		ret
+
 vram_map_p1
-		ld	a,$80		; enable video memory access
-		jr	vram_apply
+		ld	a,OPREG_VIDPAGE_1
+		out	(IOW_OPREG),a
+		ret
 vram_map_p0:
-		ld	a,$80		; enable video memory access
-vram_apply:	out	($FF),a
+		ld	a,0		; enable video memory access
+		out	(IOW_OPREG),a
+		ret
+
+map_dram0:	
+		xor	a		; send all zeros to OPREG to reset to mode 0 with ROM
+		out	(IOW_OPREG),a
+		ret
+
+map_dram2:	ld	a,OPREG_DESPAGE_UPPER|OPREG_SRCPAGE_LOWER|OPREG_ENPAGE
+		out	(IOW_OPREG),a
+		ret
+
+map_dram3:	ld	a,OPREG_DESPAGE_UPPER|OPREG_SRCPAGE_UPPER|OPREG_ENPAGE
+		out	(IOW_OPREG),a
 		ret
 
 
-sptc_print_charset:
-		; MAC_SPT_CON_GOTO 20,-8
-		; dw ld_a_0
-		dw spt_charset_64_p16_start
-		dw spt_charset_64_p16
-		dw spt_charset_64_p16
-		dw spt_charset_64_p16
+; load the label string address from the current test parameter table entry into hl
+spt_ld_hl_tp_label:
+		ld	l,(iy+TP_LABEL)
+		ld	h,(iy+TP_LABEL+1)
+		ret
+
+
+; load the label string address from the current test parameter table entry into hl
+spt_ld_hl_tp_tones:
+		ld	l,(iy+TP_TONES)
+		ld	h,(iy+TP_TONES+1)
+		ret
+
+; move to the next test parameter table entry
+spt_tp_next:	pop	hl				; get the address to jump to if we are starting over
+		ld 	bc,tp_entrysize			; find the next entry
+		add 	iy,bc
+		ld	a,(iy+TP_SIZE)			; is the length zero?
+		add	a,(iy+TP_SIZE+1)
+		ret	nz				; no, use it
+		ld	c,(iy+TP_GOTO)			; yes, get the address of the first entry
+		ld	b,(iy+TP_GOTO+1)
+		ld	iy,0
+		add	iy,bc
+		; sub	a				; clear zero flag when restarting
+		ld	sp,hl				; jump to the next location
+		ret
+
+
+
+spt_announcetest:
+		; pop	hl				; get the message to be printed
+		SPTHREAD_ENTER
+
+		dw con_NL
+		dw spt_ld_hl_tp_label
+		dw con_print				; picks up message from hl
+		dw spt_con_print, msg_testing
+		dw spt_con_index, -status_backup
 		dw spt_exit
 
-spt_charset_64_p16_start:
-		ld	hl,VBASE+(VLINE*20)-8
-		xor	a
-spt_charset_64_p16:
-		ld	bc,$10
-		add	hl,bc
-		ld	bc,$40
-		; ld	bc,$10
-		; add	ix,bc
-		; ld	bc,$40
-		jr	charset_here
 
-chartest_once:
-		xor	a
-		ld	hl,VBASE
-		ld	bc,$100
-		jr	charset_here
+print_biterrs:
+		ld	a,'7'
+		ld	b,8
+	.showbit:
+		rlc	e
+		jr	nc,.zero
+		ld	(ix+0),a
+		jr	.cont
+	.zero:
+		ld	(ix+0),'.'
+	.cont:
+		inc	ix
+		dec	a
+		djnz	.showbit
 
-chartest_fullscreen:
-		xor	a
-		ld	hl,VBASE
+		ret
+
+
+
+
+
+
+
+spt_ld_bc:	pop 	bc
+		ret
+
+spt_print_charset:
+		ld	a,ixh
+		ld	h,a
+		ld	a,ixl
+		ld	l,a
+		ld	a,0
+		SPTHREAD_ENTER
+		MAC_SPT_CON_GOTO 11,24
+		dw spt_con_print, msg_charset		; show a copy of the character set
+		MAC_SPT_CON_GOTO 12,0
+		dw spt_ld_bc, $100
+		dw do_charset_ix
+		dw spt_exit
+
+spt_chartest:
+		ld	ix,VBASE
 		ld	bc,VSIZE
-charset_here:
+		ld	a,0
+do_charset_ix:
 	.charloop:
-		ld	(hl),a
-		; ld	(ix+0),a	; copy A to byte pointed by HL
+		ld	(ix+0),a	; copy A to byte pointed by HL
 		inc	a		; increments A
-		; inc	ix
+		inc	ix
 		cpi			; increments HL, decrements BC (and does a CP)
 		jp	pe, .charloop
 		ret
+
+
+
+
+spt_play_testresult:
+		SPTHREAD_SAVE				; save the stack pointer
+
+		SPTHREAD_BEGIN
+		dw spt_ld_hl_tp_tones			; play the ID tune for current bank
+		dw playmusic
+		dw spt_pause, $2000
+		SPTHREAD_END
+
+		ld	a,$FF
+		cp	e
+		jr	z,.allbad			; if all bits bad, play shorter tune
+
+		cpl
+		cp	e
+		jr	z,.allgood			; if all bits good, play shorter tune
+
+		ld	d,8				; play bit tune for each bit, high to low
+	.showbit:
+		rlc	e
+		jr	nc,.zero
+		ld	hl,tones_bitbad
+		jr	.msbe_cont
+	.zero:
+		ld	hl,tones_bitgood
+	.msbe_cont:
+		SPTHREAD_BEGIN
+		dw playmusic
+		dw spt_pause, $2000
+		SPTHREAD_END
+
+		; pause $4000
+		dec	d
+		jr	nz,.showbit
+		jr	.done
+	.allbad:
+		SPTHREAD_BEGIN
+		dw spt_playmusic, tones_bytebad
+		dw spt_pause, $8000
+		SPTHREAD_END
+		jr	.done
+	.allgood:
+		SPTHREAD_BEGIN
+		dw spt_playmusic, tones_bytegood
+		dw spt_pause, $8000
+		SPTHREAD_END
+	.done:
+		SPTHREAD_RESTORE			; restore the stack pointer
+		ret
+
+
+
+spt_pause:							; pause by an amount specified in BC
+		pop	bc
+pause_bc:							; pause by BC*50-5+14 t-states
+		ex	af,af'
+	.loop:							
+		nop12
+		nop12
+		dec	bc
+		ld	a,b
+		or	c
+		jr	nz,.loop
+		ex	af,af'
+		ret
+
+
+
 
 
 ; V_END = (VBASE+VSIZE-1)
@@ -142,78 +380,66 @@ charset_here:
 ; msg_fd:		dbz "FD"
 
 labels_start:
-label_vram:	dbz	" 2K VRAM "
-label_dram16:	dbz	"16K DRAM "
-label_bank16:	dbz	"16K page "
+msg_banner:	dbz " TRS-80 M4P TEST ROM -- FRANK IZ8DWF / DAVE KI3V / ADRIAN BLACK"
+msg_charset:	dbz "-CHARACTER SET-"
+label_vram0:	dbz " 1K VRAM P0 3C00-3FFF "
+label_vram1:	dbz " 1K VRAM P1 3C00-3FFF "
+label_dram_lo:	dbz "48K Lo DRAM 4000-FFFF "
 
-msg_dash:	dbz	"-"
-msg_space:	dbz	" "
-msg_banner:	dbiz	"TRS-80 M2 Test ROM - Frank IZ8DWF / Dave KI3V / Adrian Black"
+label_bank_lo:	dbz "32K Bank Lo 8000-FFFF "
+label_bank_hi:	dbz "32K Bank Hi 8000-FFFF "
+
 msg_testok:	dbz	" --OK-- "
 ; msg_reloc:	dbz	"(reloc) "
 msg_skipped:	dbz	" *skip* "
 msg_biterrs:	dbz	" errors:"
 msg_absent:	dbz	" absent:"
-msg_dup:	dbz	"  DUP "
-msg_testing:	db	" "
-		dbi	" TEST "
-		dbz	" "
+msg_testing:	dbz	" .TEST. "
 ; msg_testing:	db " ", " "+$80, "t"+$80, "e"+$80, "s"+$80, "t"+$80, " "+$80, " ", 0
 status_backup equ $-msg_testing-1
 
 ; test parameter table. 2-byte entries:
 ; 1. size of test in bytes
 ; 2. starting address
-; 3. bank to map before test
-; 4. location in screen memory to start printing test data
-; 5. address of string for announcing test
-; tp_entrysize equ 10
-tp_entrysize equ tp_low-tp_vram
-
-COL1 = 2
-COL2 = (COL1+40)
-
-TP_SIZE equ 0
-TP_BASE equ 1
-TP_BANK equ 2
-TP_LABEL equ 3
-TP_POS equ 4
-TP_GOTO equ 1
+; 3. address of string for announcing test
+; 4. address of tones for identifying the test audibly
+tp_entrysize	equ	8
 
 memtest_ld_bc_size .macro
-		ld	b,(iy+TP_SIZE)
-		ld	c,a
+		ld	c,(iy+TP_SIZE)
+		ld	b,(iy+TP_SIZE+1)
 .endm
 
 memtest_ld_hl_base .macro
-		ld	h,(iy+TP_BASE)
-		ld	l,a
+		ld	l,(iy+TP_BASE)
+		ld	h,(iy+TP_BASE+1)
 .endm
 
 memtest_loadregs .macro
-		xor	a
 		memtest_ld_bc_size
 		memtest_ld_hl_base
 .endm
 
 
-tp_vram:	db	high VSIZE, high VBASE, $0, label_vram-labels_start
-		dw	VBASE+( 2*VLINE)+COL1
 
-tp_low:		db	$40, $00, $0, label_dram16-labels_start
-		dw	VBASE+( 3*VLINE)+COL1
-tp_rdest:	db	$40, $40, $0, label_dram16-labels_start
-		dw	VBASE+( 4*VLINE)+COL1
-
-tp_high:	db	$40, $80, $1, label_bank16-labels_start
-		dw	VBASE+( 5*VLINE)+COL1
-		db	$40, $C0, $1, label_bank16-labels_start
-		dw	VBASE+( 6*VLINE)+COL1
-
-		db	$00 
-		dw	tp_high
+TP_SIZE equ 0
+TP_BASE equ 2
+; TP_BANK equ 2
+TP_LABEL equ 4
+; TP_POS equ 4
+TP_TONES equ 6
+TP_GOTO equ 2
 
 
+
+tp_vram0:	dw	VSIZE, VBASE, label_vram0, tones_vram
+tp_vram1:	dw	VSIZE, VBASE, label_vram1, tones_vram
+
+tp_dram_lo:	dw	$C000, $4000, label_dram_lo, tones_id1
+; tp_dram1:	dw	$8000, $8000, label_dram1, tones_id2
+tp_bank_lo:	dw	$8000, $8000, label_bank_lo, tones_id2
+tp_bank_hi:	dw	$8000, $8000, label_bank_hi, tones_id3
+		dw	$0000, tp_dram_lo
 
 
 
@@ -223,8 +449,18 @@ tp_high:	db	$40, $80, $1, label_bank16-labels_start
 ; .include "inc/trs80m2fdcboot.asm"
 .include "inc/spt.asm"
 .include "inc/trs80m13con.asm"
-; include "inc/trs80m2music.asm"
+include "inc/trs80music.asm"
 
+
+; tones_id4:	db	$40,$60
+; 		db	$10,$00 ;rest
+; 		db	$40,$60
+; 		db	$10,$00 ;rest
+; 		db	$40,$60
+; 		db	$10,$00 ;rest
+; 		db	$40,$60
+; 		db	$60,$00 ;rest
+; 		db	$00,$00 ;end
 
 
 crtc_setup_table:

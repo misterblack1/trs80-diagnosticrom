@@ -37,7 +37,7 @@ VLINE  equ 80
 ; Assembly purists will shudder at the extensive use of macros, but for sanity it
 ; cannot be avoided.
 ;
-; Globally, the contents of these registers must be preserved
+; Globally, the contents of these registers must be preserved 
 ;	e = bit errors in the region of memory currently being tested
 ;	ix = current location in VRAM for printing messages
 ;	iy = current table entry for test parameters

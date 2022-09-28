@@ -41,6 +41,7 @@ ASSEMBLE = $(ZMAC) --zmac -m --od . --oo cim,bds,lst,hex
 MODEL = -m3
 # MEM = 32
 EMUFLAGS = $(MODEL) $(foreach h,$(HD),-h $(h)) $(foreach m,$(MEM),-mem $(m)) -turbo
+# EMUFLAGS = $(MODEL) $(foreach h,$(HD),-h $(h)) $(foreach m,$(MEM),-mem $(m))
 
 emu emu1 emu1l emu3: trs80m13diag.emu
 emu2 emu12 emu16 emu6k: trs80m2diag.emu

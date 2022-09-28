@@ -68,7 +68,7 @@ test_vram:
 		dw spt_jp,.vram_goodtones
 
 	.vram_ok:
-		dw t_prepare_display
+		dw spt_prepare_display
 		MAC_SPT_CON_GOTO 1,0
 		dw spt_announcetest 			; print results of VRAM tst
 		; dw print_biterrs
@@ -117,7 +117,7 @@ SPT_SKIP_NMIVEC
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
 
-t_prepare_display:
+spt_prepare_display:
 		SPTHREAD_ENTER
 		dw con_clear
 		dw spt_con_print, msg_banner		; print the banner
@@ -211,7 +211,7 @@ spt_ld_hl_tp_label:
 		ret
 
 ; load the label string address from the current test parameter table entry into hl
-spt_ld_hl_tp_notes:
+spt_ld_hl_tp_tones:
 		ld	l,(iy+6)
 		ld	h,(iy+7)
 		ret
@@ -247,7 +247,7 @@ spt_play_testresult:
 		SPTHREAD_SAVE				; save the stack pointer
 
 		SPTHREAD_BEGIN
-		dw spt_ld_hl_tp_notes			; play the ID tune for current bank
+		dw spt_ld_hl_tp_tones			; play the ID tune for current bank
 		dw playmusic
 		dw spt_pause, $2000
 		SPTHREAD_END
