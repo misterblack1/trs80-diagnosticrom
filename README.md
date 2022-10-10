@@ -30,14 +30,13 @@ Please know that the main goal of this ROM is to test the functionality of the v
 You should familiarize yourself with the system schematics and design of the TRS-80 before using this ROM since problems in other areas of the system can sometimes manifest themselves of a RAM problem. 
 
 Videos:
-- [Model III Reoair, Part 1](https://youtu.be/EGFKjjlvKf4)
-- [Model III Repair, Part 2](https://youtu.be/Hh8dRgtu1Jk)
+- Model III Repair [Part 1](https://youtu.be/EGFKjjlvKf4) and [Part 2](https://youtu.be/Hh8dRgtu1Jk)
 - [Model III, Diagnostic ROM Companion Video](https://youtu.be/4fuuyLiSgsE)
-- Model II, Diagnostic ROM test (coming soon)
-- Model 1 Repair and VRAM upgrade, Part 1 (coming soon)
-- Model 4P, Repair video (coming soon)
+- [Model II, Diagnostic ROM test](https://youtu.be/azsTZ-Cmijs)
+- Model 1 Repair and VRAM upgrade [Part 1](https://youtu.be/rGhkX6O1lRo) and [Part 2](https://youtu.be/LzTM_MTWcGA)
+- Model 4P, Repair video [Part 1](https://youtu.be/-EhhU-mCyp0), [Part 2](https://youtu.be/JgqqT4Ewgzs), Part 3 Coming soon.
 
-In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk/tape based tests use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
+In addition, most (all?) RAM tests contained inside the stock boot ROM and even disk/tape based tests use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this new Daignostic ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
 ## Feature List
 
@@ -57,11 +56,11 @@ In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk
 	- Temporarily relocates the test subroutine into previously tested RAM at `$4000` and unmaps the ROM from Z80 address space to test the RAM between `$0000` and `$3FFF`.
 		- The stock BOOT ROM does not test the region of DRAM from `$0000`-`$0FFF` that is hidden while the ROM is mapped. It also does not test any RAM above 32k -- so any faults in the untested parts of RAM will go undetected. This ROM tests 100% of the DRAM.
 	- _This version of the ROM has preliminary support for booting to floppy or hard drive (incluyding FreHD48).  There are known issues with booting at this time, and the symptoms vary between the Model II, 12, 16, 16B, and 6000._
-- One ROM image for **TRS-80 Model 4p** with 64K or 128K.
+- One ROM image for **TRS-80 Model 4P** with 64K or 128K.
 	- This is an early version that tests all RAM _**except**_ the lowest 16K.
 		- Testing the lowest 16K will require a relocating test similar to what is done for the Model II tests, but this is not yet implemented.
 	- If the machine has 128K, the upper bank if tested in two halves.
-	- This ROM has only been tested on the model 4p, but is expected to work on the model 4 and 4D as well (all GA and NGA models).
+	- This ROM has only been tested on the model 4P, but is expected to work on the model 4 and 4D as well (all GA and NGA models).
 - All ROM images fit within 2K so the ROM can be used on any machine in the range using a normal 2716 EPROM.
 
 
@@ -78,16 +77,16 @@ In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk
 - Makes sounds to let you know the ROM is running even if the display is not operating properly:
 	- On the Model 1/III:
 		- Makes a beep from the cassette port (so you can know the system is executing the ROM.)
-	- On the Model 4p:
+	- On the Model 4P:
 		- Makes a beep from the internal speaker.
 	- On the Model II:
 		- Accesses the built-in floppy drive three times.  The activity light should activate and the head solenoid should click. (See Model II video above to see this in operation.)
 - Set the system to 64 or 80 column mode depending on the machine.
-	- On the Model 4p, displays a test pattern in 80 column mode for a visual test of the VRAM as well as a test of the 80-column hardware.  Then switches to 64-column mode for the rest of the tests, including the March VRAM test.
+	- On the Model 4P, displays a test pattern in 80 column mode for a visual test of the VRAM as well as a test of the 80-column hardware.  Then switches to 64-column mode for the rest of the tests, including the March VRAM test.
 - Tests the video RAM using a March C test.
 	- On the Model I/III:
 		- Tests for 7-bit Model I VRAM (fake bit 6) and identifies it if found.
-	- On the Model I/III/4p:
+	- On the Model I/III/4P:
 		- Beeps a good (rising tones) or bad (tune ending on low note) VRAM sound. 
 		- If the VRAM is bad, it will show a test pattern on the screen, then beep out which bit(s) are bad repeatedly.
 	- On the Model II:
@@ -100,7 +99,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk
 		- Tests that first bank of 4k repeatedly. These systems cannot have more than 4K of RAM, so nothing above 4K is tested.
 	- If the first bank of DRAM is 16k:
 		- Tests all three DRAM banks (48K) repeatedly.  Missing banks (e.g., for a 16K or 32K machine) will be listed with all bits in error (`76543210`).
-- On the Model I/III/4p:
+- On the Model I/III/4P:
 	- After each test, the diagnostic will play a good bank or bad bank tune. If a bad bank exists, it will beep out which bits are bad and print this to screen.
 	- It is possible to run the diagnostic ROM with NO DRAM installed at all. It will still work properly.
 - The Model II can (theoretically) have up to 512K of DRAM:
@@ -160,9 +159,15 @@ _This version of the ROM has preliminary support for booting to floppy or hard d
 
 _This section to be completed._
 
-# Running this diagnostic ROM on a TRS-80 Model II
+# Running this diagnostic ROM on a TRS-80 Model 4/4P
 
-_This section to be completed._
+Note: The ROM has only been tested on a 4P. It should work on the 4/4D, but YMMV.
+
+On the 4P, the stock boot ROM is just a 2332, so you can use a TMS-2532A to replace it, or use a 2732 EPROM but you have to swap around the top address line and also ground the output enable pin. (The 2332 doesn't have this pin, so the motherboard holds that pin at 5V.) 
+
+Flash the test ROM code into the EPROM and install into the motherboard. You should hear a start-up been and then, if the RAM test is running, you will hear beeps indicated the testing of each part of RAM. 
+
+You can actually run the TRS-80 Model 1/III ROM in the Model 4P, and it does work. It will only test 64 column mode and only test 48k of DRAM, but if you have problem with the system running in 80 column mode, this may be a good test to see how well the system is running. 
 
 ## Other troubleshooting notes
 
