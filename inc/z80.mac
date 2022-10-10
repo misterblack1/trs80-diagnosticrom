@@ -6,8 +6,19 @@ JR_PROMOTE defl 0
 	.jperror JP_ERROR
 	.jrpromote JR_PROMOTE
 
+dbi .macro string
+	irpc char,<string>
+		db	'`char`'|$80
+	.endm
+.endm
+
 dbz .macro string
-	db "`string`", 0
+		db "`string`", 0
+.endm
+
+dbiz .macro string
+		dbi "`string`"
+		db 0
 .endm
 
 nop12 .macro
@@ -22,17 +33,29 @@ nop12 .macro
 
 ; to maximize space, 
 
-PLACE_INTVEC .macro
-		.assert $ <= $38
-		dc 	$38-$,$FF				; fill empty space
-		org 	$38					; NMI vector
+PLACE_VEC .macro loc
+		.assert $ <= loc
+		.if $ < loc
+		dc	loc-$,$FF
+		.endif
+		org	loc
 .endm
 
-PLACE_NMIVEC .macro
-		.assert $ <= $66
-		dc 	$66-$,$FF				; fill empty space
-		org 	$66					; NMI vector
-.endm
+; PLACE_INTVEC .macro
+; 		.assert $ <= $38
+; 		.if $ < $38
+; 		dc 	$38-$,$FF				; fill empty space
+; 		.endif
+; 		org 	$38					; NMI vector
+; .endm
+
+; PLACE_NMIVEC .macro
+; 		.assert $ <= $66
+; 		.if $ < $66
+; 		dc 	$66-$,$FF				; fill empty space
+; 		.endif
+; 		org 	$66					; NMI vector
+; .endm
 
 SKIP_INTVEC .macro
 		jr	.intvec_continue			; continue after the NMI vector
@@ -43,7 +66,8 @@ SKIP_INTVEC .macro
 
 SKIP_NMIVEC .macro
 		jr	.nmivec_continue			; continue after the NMI vector
-		PLACE_NMIVEC
+		; PLACE_NMIVEC
+		PLACE_VEC $66
 		retn
 	.nmivec_continue:
 .endm

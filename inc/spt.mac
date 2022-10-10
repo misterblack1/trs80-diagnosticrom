@@ -3,15 +3,16 @@
 SPT_SKIP_INTVEC .macro
 		dw spt_jp, .intvec_continue			; continue after the NMI vector
 		PLACE_INTVEC
-		ld	sp,0
+		; ld	sp,0
 		reti
 	.intvec_continue:
 .endm
 
 SPT_SKIP_NMIVEC .macro
 		dw spt_jp, .nmivec_continue			; continue after the NMI vector
-		PLACE_NMIVEC
-		ld	sp,0					; on model 1, NMI is connected to reset button
+		; PLACE_NMIVEC
+		PLACE_VEC $66
+		; ld	sp,0					; on model 1, NMI is connected to reset button
 		retn
 	.nmivec_continue:
 .endm
@@ -41,9 +42,11 @@ SPTHREAD_END .macro
 ; threaded code itself.
 SPTHREAD_SAVE .macro
 		exx
+		ex	af,af'		; save flags because of the add hl,sp instruction
 		ex	de,hl
 		ld	hl,0		; copy old sp to iy
 		add	hl,sp
+		ex	af,af'
 		exx
 .endm
 

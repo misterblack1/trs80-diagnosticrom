@@ -12,6 +12,10 @@ Model II with 128K:
 
 ![Normal Operation, M2 128K](documentation/M2_128k_animated.gif)
 
+Model 4P with 128K:
+
+![Normal Operation, M4P 128K](documentation/M4p_128k_animated.gif)
+
 #### Main contributors:
 - Dave Giller KI3V - Programmer and designer
 - Frank IZ8DWF - Testing methodology and initial test routines
@@ -31,6 +35,7 @@ Videos:
 - [Model III, Diagnostic ROM Companion Video](https://youtu.be/4fuuyLiSgsE)
 - Model II, Diagnostic ROM test (coming soon)
 - Model 1 Repair and VRAM upgrade, Part 1 (coming soon)
+- Model 4P, Repair video (coming soon)
 
 In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk/tape based tests use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
@@ -48,16 +53,22 @@ In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk
 - One ROM image for **TRS-80 Model II** with all DRAM sizes.
 	- The same image is expected to work with the Model 12, 16, 16B or 6000, although this is not tested.
 	- Testing full 2K of VRAM
-	- Testing up to 512k of DRAM, looping continually.
+	- Testing up to 512K of DRAM, looping continually.
 	- Temporarily relocates the test subroutine into previously tested RAM at `$4000` and unmaps the ROM from Z80 address space to test the RAM between `$0000` and `$3FFF`.
 		- The stock BOOT ROM does not test the region of DRAM from `$0000`-`$0FFF` that is hidden while the ROM is mapped. It also does not test any RAM above 32k -- so any faults in the untested parts of RAM will go undetected. This ROM tests 100% of the DRAM.
+	- _This version of the ROM has preliminary support for booting to floppy or hard drive (incluyding FreHD48).  There are known issues with booting at this time, and the symptoms vary between the Model II, 12, 16, 16B, and 6000._
+- One ROM image for **TRS-80 Model 4p** with 64K or 128K.
+	- This is an early version that tests all RAM _**except**_ the lowest 16K.
+		- Testing the lowest 16K will require a relocating test similar to what is done for the Model II tests, but this is not yet implemented.
+	- If the machine has 128K, the upper bank if tested in two halves.
+	- This ROM has only been tested on the model 4p, but is expected to work on the model 4 and 4D as well (all GA and NGA models).
 - All ROM images fit within 2K so the ROM can be used on any machine in the range using a normal 2716 EPROM.
 
 
 ## Future improvements
 
 - Testing the ROM on "Big Tandy" systems like the Model 12, 16, and 6000.
-- Porting to the Model 4
+- Testing on the Model 4 and 4D
 - Porting the diagnostic routines to other Z80 systems
 	- Kaypro II'83, 4'83, 10, 2'84, 4'84, 1
 - More comprehensive documentation
@@ -67,12 +78,16 @@ In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk
 - Makes sounds to let you know the ROM is running even if the display is not operating properly:
 	- On the Model 1/III:
 		- Makes a beep from the cassette port (so you can know the system is executing the ROM.)
+	- On the Model 4p:
+		- Makes a beep from the internal speaker.
 	- On the Model II:
 		- Accesses the built-in floppy drive three times.  The activity light should activate and the head solenoid should click. (See Model II video above to see this in operation.)
 - Set the system to 64 or 80 column mode depending on the machine.
+	- On the Model 4p, displays a test pattern in 80 column mode for a visual test of the VRAM as well as a test of the 80-column hardware.  Then switches to 64-column mode for the rest of the tests, including the March VRAM test.
 - Tests the video RAM using a March C test.
 	- On the Model I/III:
 		- Tests for 7-bit Model I VRAM (fake bit 6) and identifies it if found.
+	- On the Model I/III/4p:
 		- Beeps a good (rising tones) or bad (tune ending on low note) VRAM sound. 
 		- If the VRAM is bad, it will show a test pattern on the screen, then beep out which bit(s) are bad repeatedly.
 	- On the Model II:
@@ -85,6 +100,7 @@ In addition, most (all?) RAM tests contained inside diagnostic ROM and even disk
 		- Tests that first bank of 4k repeatedly. These systems cannot have more than 4K of RAM, so nothing above 4K is tested.
 	- If the first bank of DRAM is 16k:
 		- Tests all three DRAM banks (48K) repeatedly.  Missing banks (e.g., for a 16K or 32K machine) will be listed with all bits in error (`76543210`).
+- On the Model I/III/4p:
 	- After each test, the diagnostic will play a good bank or bad bank tune. If a bad bank exists, it will beep out which bits are bad and print this to screen.
 	- It is possible to run the diagnostic ROM with NO DRAM installed at all. It will still work properly.
 - The Model II can (theoretically) have up to 512K of DRAM:
@@ -139,6 +155,12 @@ Do note: this code currently depends on proper operation of the FDC.  Specifical
 The ROM image fits into a 2716, so it is easiest to use one and install that into the single ROM socket on the CPU board. Alternatively, you can use the 2364 to 2764 adapter mentioned above, but as with the TRS-80 Model 1, you must load the ROM into `$1000` when programming. 
 
 As soon as you power on the machine, you should hear the floppy drive clicking, even before the CRT warms up, so you know the diagnostic code is running.
+
+_This version of the ROM has preliminary support for booting to floppy or hard drive (incluyding FreHD48).  There are known issues with booting at this time, and the symptoms vary between the Model II, 12, 16, 16B, and 6000._ **To ensure that this ROM loops the RAM tests indefinitely instead of attempting to boot your system, make sure there is no bootable floppy in drive 0, and make sure any hard drive (or HD emulator) is disconnected or powered off before running this ROM.**
+
+_This section to be completed._
+
+# Running this diagnostic ROM on a TRS-80 Model II
 
 _This section to be completed._
 

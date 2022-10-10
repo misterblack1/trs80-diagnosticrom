@@ -20,13 +20,13 @@
 ; destroys: a,bc,d,hl
 ; preserves: ix
 
-memtestmarch:
+
+memtest_init:
 		xor	a
 		ld	e,a			; reset error accumulator
-		ld	d,a			; set the first testing value to 0
+		ret
 
-	checkabsent:					; quick test for completely missing bank
-		memtest_ld_hl_base
+memtest_absent:
 		ld	b,h
 		ld	c,1
 		cpl				; A := FF
@@ -37,124 +37,80 @@ memtestmarch:
 		jr	z,.allbad		; if they match, all bits are bad, but double-check
 		cp	0			; are we on the first round?
 		jr	z,.redo			; yes, redo with reversed bits
-		jr	mtm1
+		ret				; didn't find missing ram, exit without error
 	.allbad:
 		ld	e,$FF			; report all bits bad
-		jr	mtm_done_bounce
+		ret
 
-	mtm1:
-		memtest_loadregs
-	mtm1loop:				; fill initial value upwards
+memtest_march_w_up:
+	.loop:					; fill upwards
 		ld	(hl),d
 		inc	hl
 		dec	bc
 		ld	a,c
 		or	b
-		jr	nz,mtm1loop
-	mtm2:					; read value, write complement upwards
-		memtest_loadregs
-	mtm2loop:
+		jr	nz,.loop
+		ret
+
+memtest_march_rw_up:
+	.loop:
 		ld	a,(hl)
 		cp	d			; compare to value
-		jr	z, mtm2cont		; memory changed, report
+		jr	z, .cont		; memory changed, report
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
 		ld	a,d			; reload a with correct value
-	mtm2cont:
+	.cont:
 		cpl				; take the complement
 		ld	(hl),a			; write the complement
 		inc	hl
 		dec	bc
 		ld	a,c
 		or	b
-		jr	nz,mtm2loop
+		jr	nz,.loop
+		ret
 		
-	mtm3:					; read complement, write original value upwards
-		memtest_loadregs
-	mtm3loop:
-		ld	a,(hl)
-		cpl
-		cp	d			; compare to the complement
-		jr	z, mtm3cont		; memory changed, report
-		xor	d			; calculate errored bits
-		or	e				
-		ld	e,a			; save error bits to e
-		ld	a,d			; reload a with correct value
-	mtm3cont:
-		ld	(hl),d			; fill with test value
-		inc	hl
-		dec	bc
-		ld	a,c
-		or	b
-		jr	nz,mtm3loop
-		jr	mtm4
-	
-	mtm_done_bounce:
-		jr	mtm_done
-	mtm1_bounce:
-		jr	mtm1
-
-	mtm4:					; read test value, write complement downwards
-		memtest_loadregs
+memtest_march_rw_dn:
 		add	hl,bc			; move to end of the test area
 		dec	hl
-	mtm4loop:
+	.loop:
 		ld	a,(hl)
 		cp	d			; compare to value
-		jr	z, mtm4cont
+		jr	z, .cont
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
 		ld	a,d			; reload a with correct value
-	mtm4cont:
+	.cont:
 		cpl				; take the complement
 		ld	(hl),a			; write complement
 		dec	hl
 		dec	bc
 		ld	a,c
 		or	b
-		jr	nz,mtm4loop
+		jr	nz,.loop
+		ret
 
-	mtm5:					; read complement, write value downwards
-		memtest_loadregs
+memtest_march_r_dn:
 		add	hl,bc			; move to end of the test area
 		dec	hl
-	mtm5loop:
+	.loop:
 		ld	a,(hl)
-		cpl
 		cp	d
-		jr	z, mtm5cont
+		jr	z,.cont
 		xor	d			; calculate errored bits
 		or	e				
 		ld	e,a			; save error bits to e
 		ld	a,d			; reload a with correct value
-	mtm5cont:
-		ld	(hl),d
+	.cont:
 		dec	hl
 		dec	bc
 		ld	a,c
 		or	b
-		jr	nz,mtm5loop
-	
-	mtm6:					; final check that all are zero
-		memtest_loadregs
-		add	hl,bc			; move to end of the test area
-		dec	hl
-	mtm6loop:
-		ld	a,(hl)
-		cp	d
-		jr	z,mtm6cont
-		xor	d			; calculate errored bits
-		or	e				
-		ld	e,a			; save error bits to e
-		ld	a,d			; reload a with correct value
-	mtm6cont:
-		dec	hl
-		dec	bc
-		ld	a,c
-		or	b
-		jr	nz,mtm6loop
+		jr	nz,.loop
+		ret
+
 
 	mtmredo:
 		ld	a,d	
@@ -170,5 +126,19 @@ memtestmarch:
 		scf
 		ret
 
-memtestmarch_end equ $
+memtest_march:
+		xor	a
+		ld	e,a			; reset error accumulator
+
+		push	hl			; save the test regs
+		push	bc
+
+		call	memtest_absent
+		
+
+		ld	d,0
+
+	.redo:	
+
+memtest_split_end equ $
 ;-----------------------------------------------------------------------------

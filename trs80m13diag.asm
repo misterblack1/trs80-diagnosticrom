@@ -68,7 +68,7 @@ test_vram:
 		dw spt_jp,.vram_goodtones
 
 	.vram_ok:
-		dw t_prepare_display
+		dw spt_prepare_display
 		MAC_SPT_CON_GOTO 1,0
 		dw spt_announcetest 			; print results of VRAM tst
 		; dw print_biterrs
@@ -110,14 +110,14 @@ SPT_SKIP_NMIVEC
 		dw spt_play_testresult			; play the tones
 
 	.cont:
-		dw spt_next_test, .start
+		dw spt_tp_next, .start
 		dw spt_jp, .loop
 
 
 ;; -------------------------------------------------------------------------------------------------
 ;; end of main program.
 
-t_prepare_display:
+spt_prepare_display:
 		SPTHREAD_ENTER
 		dw con_clear
 		dw spt_con_print, msg_banner		; print the banner
@@ -211,13 +211,13 @@ spt_ld_hl_tp_label:
 		ret
 
 ; load the label string address from the current test parameter table entry into hl
-spt_ld_hl_tp_notes:
+spt_ld_hl_tp_tones:
 		ld	l,(iy+6)
 		ld	h,(iy+7)
 		ret
 
 ; move to the next test parameter table entry
-spt_next_test:	pop	hl				; get the address to jump to if we are starting over
+spt_tp_next:	pop	hl				; get the address to jump to if we are starting over
 		ld 	bc,tp_size			; find the next entry
 		add 	iy,bc
 		ld	a,(iy+0)			; is the length zero?
@@ -247,7 +247,7 @@ spt_play_testresult:
 		SPTHREAD_SAVE				; save the stack pointer
 
 		SPTHREAD_BEGIN
-		dw spt_ld_hl_tp_notes			; play the ID tune for current bank
+		dw spt_ld_hl_tp_tones			; play the ID tune for current bank
 		dw playmusic
 		dw spt_pause, $2000
 		SPTHREAD_END
@@ -297,7 +297,7 @@ spt_play_testresult:
 spt_pause:
 		pop	bc
 ; pause by an amount specified in BC
-do_pause:
+pause_bc:
 	.loop:
 		dec	bc
 		ld	a,b
@@ -324,6 +324,8 @@ print_biterrs:
 
 		ret
 
+spt_ld_bc:	pop 	bc
+		ret
 
 
 spt_print_charset:
@@ -353,10 +355,6 @@ do_charset_ix:
 		jp	pe, .charloop
 		ret
 
-include "inc/spt.asm"
-include "inc/memtestmarch.asm"
-include "inc/trs80m13con.asm"
-include "inc/trs80music.asm"
 
 label_vram:	dbz " 1K VRAM 3C00-3FFF "
 label_dram4k:	dbz " 4K DRAM 4000-4FFF "
@@ -382,6 +380,22 @@ msg_banktest:	dbz "TESTING BANK SIZE  "
 ; 4. address of tones for identifying the test audibly
 tp_size		equ	8
 
+memtest_ld_bc_size .macro
+		ld	c,(iy+0)
+		ld	b,(iy+1)
+.endm
+
+memtest_ld_hl_base .macro
+		ld	l,(iy+2)
+		ld	h,(iy+3)
+.endm
+
+memtest_loadregs .macro
+		memtest_ld_bc_size
+		memtest_ld_hl_base
+.endm
+
+
 tp_vram:	dw	VSIZE, VBASE, label_vram, tones_vram
 tp_bank:	dw	$1000, $7000, msg_banktest, tones_id1
 
@@ -392,3 +406,9 @@ tp_16k:		dw	$4000, $4000, label_dram16k1, tones_id1
 
 tp_4k:		dw	$1000, $4000, label_dram4k, tones_id1
 		dw	$0000, tp_4k
+
+
+include "inc/spt.asm"
+include "inc/memtestmarch.asm"
+include "inc/trs80m13con.asm"
+include "inc/trs80music.asm"
