@@ -64,7 +64,7 @@ In addition, most (all?) RAM tests contained inside the stock boot ROM and even 
 - All ROM images fit within 2K so the ROM can be used on any machine in the range using a normal 2716 EPROM.
 
 
-## Future improvements
+### Future improvements
 
 - Testing the ROM on "Big Tandy" systems like the Model 12, 16, and 6000.
 - Testing on the Model 4 and 4D
@@ -72,7 +72,7 @@ In addition, most (all?) RAM tests contained inside the stock boot ROM and even 
 	- Kaypro II'83, 4'83, 10, 2'84, 4'84, 1
 - More comprehensive documentation
 
-# What the ROM does
+## What the ROM does
 
 - Makes sounds to let you know the ROM is running even if the display is not operating properly:
 	- On the Model 1/III:
