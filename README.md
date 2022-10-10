@@ -183,7 +183,7 @@ You can actually run the TRS-80 Model 1/III ROM in the Model 4P, and it does wor
 
 ## Knowing what might be wrong
 
-![Mother Board Components](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%203%20Motherboard%20Layout%20Small%20800.png?raw=true)
+![Motherboard Components](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%203%20Motherboard%20Layout%20Small%20800.png?raw=true)
 
 The Model III motherboard layout is shown above. I recommend referring to the Radio Shack Technical Service Manual for help in identifying what components might be bad on your system, but the picture should give you a head-start.
 
@@ -192,6 +192,12 @@ The Model III motherboard layout is shown above. I recommend referring to the Ra
 The Model I motherboard has only 1 bank of DRAM, which can 4k or 16k. If the system has 16k, then an additional 32k can be installed in an attached expansion interface.
 
 For the ROM position in the Level II PCB, you must figure out which ROM is the lower ROM. You may have to look up part numbers of the chips to figure that out. 
+
+![Model 4P Motherboard](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/documentation/Model%204P.png?raw=true)
+
+The Model 4P motherboard has a 2332 bootrom, you need to use an adapter or a TMS2532A in this socker. If you have neither, you can use a 2732 EPROM but you must swap around a couple pins and ground hte /OE pin on the EPROM. (See pin outs of these chips to understand.)
+
+The RAM test on the 4/4P is not complete due to the way the banking works -- but it will FULLY test the upper 64k of RAM, so you can swap the lower bank chips with the upper bank to get a full test.
 
 ## Building
 
