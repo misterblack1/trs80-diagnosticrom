@@ -36,7 +36,7 @@ Videos:
 - Model 1 Repair and VRAM upgrade [Part 1](https://youtu.be/rGhkX6O1lRo) and [Part 2](https://youtu.be/LzTM_MTWcGA)
 - Model 4P, Repair video [Part 1](https://youtu.be/-EhhU-mCyp0), [Part 2](https://youtu.be/JgqqT4Ewgzs), Part 3 Coming soon.
 
-In addition, most (all?) RAM tests contained inside the stock boot ROM and even disk/tape based tests use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this new Daignostic ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
+In addition, most (all?) RAM tests contained inside the stock boot ROM and even disk/tape based tests use a very rudimentary RAM test that are inadequate to detect subtle RAM problems. While the test in this new diagnostic ROM isn't the end-all, be-all of RAM tests, we feel it is better than the typical simple bit pattern tests used elsewhere. The RAM test implemented here is a "march" test, which we have found to be much more reliable at detecting a variety of different RAM fault modes.
 
 ## Feature List
 
