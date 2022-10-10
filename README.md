@@ -112,7 +112,7 @@ In addition, most (all?) RAM tests contained inside the stock boot ROM and even 
 		- It is possible to run the diagnostic with NO DRAM installed at all. It will still work properly. 
 
 
-# Running this diagnostic ROM on a TRS-80 Model I or Model III
+## Running this diagnostic ROM on a TRS-80 Model I or Model III
 
 The Diagnostic ROM is less than 2K in size, so it will fit completely within a 2716.
 
@@ -143,7 +143,7 @@ You can also install the ROM into the Level II ROM upgrade board on the keyboard
 	- If it is, you will not hear a beep code because the ROM identifies this as the normal 7-bit VRAM in a stock Model I machine.
 	- If bit 6 of VRAM is not consistently the NOR of bits 5 and 7, the screen will be filled with copies of the character set, and the error will be repeatedly reported as tones (HI&nbsp;**low**&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI&nbsp;HI, identifying bad bit 6).
 
-# Running this diagnostic ROM on a TRS-80 Model II
+## Running this diagnostic ROM on a TRS-80 Model II
 
 ***WARNING***: **You use this ROM (or really, do any troubleshooting inside a Model II or its derivatives) at your own risk!** 
 
@@ -159,7 +159,7 @@ _This version of the ROM has preliminary support for booting to floppy or hard d
 
 _This section to be completed._
 
-# Running this diagnostic ROM on a TRS-80 Model 4/4P
+## Running this diagnostic ROM on a TRS-80 Model 4/4P
 
 Note: The ROM has only been tested on a 4P. It should work on the 4/4D, but YMMV.
 
