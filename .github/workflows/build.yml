@@ -1,0 +1,54 @@
+name: Build
+
+# If a pull-request is pushed then cancel all previously running jobs related
+# to that pull-request
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  PY_COLORS: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      TERM: linux
+    steps:
+      - uses: actions/checkout@v3.5.3
+        with:
+          fetch-depth: 0
+      - name: Prepare environment
+        run: |
+          mkdir zmac
+          mkdir bin
+          echo "${GITHUB_WORKSPACE}/bin" >> "${GITHUB_PATH}"
+
+      - name: Unzip zmac - Z-80 Macro Cross Assembler
+        run: |
+          pushd zmac || exit 1
+          unzip "${GITHUB_WORKSPACE}/zmac.zip"
+          popd || exit 1
+
+      - name: Compile zmac
+        run: |
+          pushd zmac/src || exit 1
+          make
+          cp -av zmac "${GITHUB_WORKSPACE}/bin/"
+          popd || exit 1
+
+      - name: Test zmac is installed
+        run: zmac --help
+
+      - name: Build trs80-diagnosticrom
+        run: |
+          rm *.bin
+          make
